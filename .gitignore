@@ -1,12 +1,58 @@
+﻿# Build outputs
 **/bin/
 **/obj/
-**/node_modules/
 **/dist/
+**/TestResults/
+**/coverage/
+*.dll
+*.pdb
+*.nupkg
+
+# Node, Expo and local tooling
+**/node_modules/
+**/.expo/
+**/.expo-shared/
 .expo/
+.expo-shared/
+.parcel-cache/
+.turbo/
+
+# IDE and OS files
+.vs/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+.vscode/*
+!.vscode/extensions.json
+Thumbs.db
+Desktop.ini
+
+# Logs and temporary files
+*.log
 **/*.out.log
 **/*.err.log
+*.tmp
+*.temp
+
+# Environment variables and local configuration
 .env
-Api/src/MoneyDoPaizao.Api/appsettings.json
-Api/src/MoneyDoPaizao.Api/appsettings.Development.json
 .env.*
 !.env.example
+Api/src/MoneyDoPaizao.Api/appsettings.json
+Api/src/MoneyDoPaizao.Api/appsettings.Development.json
+Api/src/MoneyDoPaizao.Api/appsettings.Production.json
+
+# Local databases and credentials
+*.db
+*.sqlite
+*.sqlite3
+*.pem
+*.key
+*.pfx
+secrets.json
+secrets.*.json
+
+# Git internals
+.git/
