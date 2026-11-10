@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "Money do Paizão",
+    "slug": "money-do-paizao",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "scheme": "moneydopaizao",
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/paizao-logo.png",
+      "name": "Paizão – Sistema de Empréstimos",
+      "shortName": "Paizão",
+      "description": "Controle, confiança e compromisso para empréstimos e finanças.",
+      "themeColor": "#071629",
+      "backgroundColor": "#F6F8FB",
+      "display": "standalone",
+      "scope": "/",
+      "startUrl": "/",
+      "orientation": "portrait"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0B1F33"
+      }
+    }
+  }
+}

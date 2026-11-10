@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MoneyDoPaizao.Api/MoneyDoPaizao.Api.csproj" />
+    <Project Path="src/MoneyDoPaizao.Application/MoneyDoPaizao.Application.csproj" />
+    <Project Path="src/MoneyDoPaizao.Domain/MoneyDoPaizao.Domain.csproj" />
+    <Project Path="src/MoneyDoPaizao.Infrastructure/MoneyDoPaizao.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MoneyDoPaizao.IntegrationTests/MoneyDoPaizao.IntegrationTests.csproj" />
+    <Project Path="tests/MoneyDoPaizao.UnitTests/MoneyDoPaizao.UnitTests.csproj" />
+  </Folder>
+</Solution>

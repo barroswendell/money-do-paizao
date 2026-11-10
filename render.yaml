@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: paizao-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ConnectionStrings__DefaultConnection
+        sync: false
+      - key: Jwt__Key
+        sync: false
+      - key: Jwt__Issuer
+        value: MoneyDoPaizao.Api
+      - key: Jwt__Audience
+        value: MoneyDoPaizao.Mobile
+      - key: AdminSeed__Name
+        value: Administrador
+      - key: AdminSeed__Email
+        sync: false
+      - key: AdminSeed__Cpf
+        sync: false
+      - key: AdminSeed__BirthDate
+        value: 1990-01-01
+      - key: AdminSeed__Password
+        sync: false

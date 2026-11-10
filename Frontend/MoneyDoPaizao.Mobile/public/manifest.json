@@ -1,0 +1,26 @@
+{
+  "name": "Paizão – Sistema de Empréstimos",
+  "short_name": "Paizão",
+  "description": "Controle, confiança e compromisso para empréstimos e finanças.",
+  "lang": "pt-BR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#071629",
+  "background_color": "#F6F8FB",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/paizao-logo.png",
+      "sizes": "1536x1024",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+.expo/
+**/*.out.log
+**/*.err.log
+.env
+Api/src/MoneyDoPaizao.Api/appsettings.json
+Api/src/MoneyDoPaizao.Api/appsettings.Development.json
+.env.*
+!.env.example

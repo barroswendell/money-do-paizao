@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: money-do-paizao-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: moneydopaizao
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - money_do_paizao_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  money_do_paizao_postgres_data:
