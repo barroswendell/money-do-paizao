@@ -99,7 +99,11 @@ using (var scope = app.Services.CreateScope())
     try
     {
         logger.LogInformation("Iniciando inicialização do banco de dados.");
-        await DatabaseSeeder.InitializeAsync(scope.ServiceProvider, app.Configuration);
+        var createdApplicationTables = await DatabaseSeeder.InitializeAsync(scope.ServiceProvider, app.Configuration);
+        logger.LogInformation(
+            createdApplicationTables
+                ? "Tabelas do aplicativo criadas no schema public."
+                : "Tabelas do aplicativo já estavam disponíveis no schema public.");
         logger.LogInformation("Inicialização do banco de dados concluída.");
     }
     catch (Exception exception)
