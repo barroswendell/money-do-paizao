@@ -19,6 +19,32 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Register'>;
 
+function normalizeBirthDate(value: string) {
+  const trimmedValue = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmedValue)) {
+    return isValidDate(trimmedValue) ? trimmedValue : null;
+  }
+
+  const digits = trimmedValue.replace(/\D/g, '');
+  if (digits.length !== 8) {
+    return null;
+  }
+
+  const day = digits.slice(0, 2);
+  const month = digits.slice(2, 4);
+  const year = digits.slice(4, 8);
+  const normalizedValue = `${year}-${month}-${day}`;
+  return isValidDate(normalizedValue) ? normalizedValue : null;
+}
+
+function isValidDate(value: string) {
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year
+    && date.getUTCMonth() === month - 1
+    && date.getUTCDate() === day;
+}
+
 export function RegisterScreen({ navigation }: Props) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -43,9 +69,15 @@ export function RegisterScreen({ navigation }: Props) {
       return;
     }
 
+    const normalizedBirthDate = normalizeBirthDate(birthDate);
+    if (!normalizedBirthDate) {
+      setError('Informe uma data válida no formato DD/MM/AAAA.');
+      return;
+    }
+
     try {
       setLoading(true);
-      await register({ name, email, cpf, birthDate, password, confirmPassword });
+      await register({ name, email, cpf, birthDate: normalizedBirthDate, password, confirmPassword });
       Alert.alert('Cadastro realizado', 'Agora você já pode entrar no sistema.', [
         { text: 'Ir para o login', onPress: () => navigation.navigate('Login') },
       ]);
@@ -108,7 +140,7 @@ export function RegisterScreen({ navigation }: Props) {
               <Text className="mb-1.5 text-[13px] font-bold text-foreground">Data de nascimento</Text>
               <View className="flex-row items-center rounded-xl border border-border bg-input px-3.5">
                 <CalendarDays color="#6D7784" size={18} strokeWidth={1.8} />
-                <Input className="border-0 bg-transparent px-3" keyboardType="numbers-and-punctuation" onChangeText={setBirthDate} placeholder="AAAA-MM-DD" value={birthDate} />
+                <Input className="border-0 bg-transparent px-3" keyboardType="numbers-and-punctuation" onChangeText={setBirthDate} placeholder="DD/MM/AAAA" value={birthDate} />
               </View>
             </View>
 
