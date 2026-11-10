@@ -49,7 +49,8 @@ public sealed class AuthService(
             throw new InvalidCredentialsException();
         }
 
-        var user = await userRepository.GetByEmailAsync(request.Email.Trim().ToLowerInvariant(), cancellationToken);
+        var email = request.Email.Trim().ToLowerInvariant();
+        var user = await userRepository.GetByEmailAsync(email, cancellationToken);
 
         if (user is null || !passwordHasher.Verify(request.Password, user.PasswordHash))
         {

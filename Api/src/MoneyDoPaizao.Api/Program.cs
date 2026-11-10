@@ -7,6 +7,7 @@ using MoneyDoPaizao.Application.Services;
 using MoneyDoPaizao.Infrastructure.Persistence;
 using MoneyDoPaizao.Infrastructure.Repositories;
 using MoneyDoPaizao.Infrastructure.Security;
+using MoneyDoPaizao.Api.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -56,21 +57,54 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
+app.UseMiddleware<RequestLoggingMiddleware>();
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseCors("Development");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
-
-using (var scope = app.Services.CreateScope())
+app.MapGet("/health/db", async (
+    MoneyDoPaizaoDbContext context,
+    ILogger<Program> logger,
+    CancellationToken cancellationToken) =>
 {
     try
     {
-        await DatabaseSeeder.InitializeAsync(scope.ServiceProvider, app.Configuration);
+        var connected = await context.Database.CanConnectAsync(cancellationToken);
+        if (!connected)
+        {
+            logger.LogError("Health check do banco falhou: não foi possível conectar ao PostgreSQL.");
+            return Results.Json(
+                new { status = "error", database = "unavailable" },
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+
+        logger.LogInformation("Health check do banco concluído com sucesso.");
+        return Results.Ok(new { status = "ok", database = "connected" });
     }
     catch (Exception exception)
     {
-        app.Logger.LogWarning(exception, "Não foi possível inicializar o banco. Verifique se o PostgreSQL está em execução.");
+        logger.LogError(exception, "Health check do banco falhou com exceção.");
+        return Results.Json(
+            new { status = "error", database = "unavailable" },
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+});
+
+using (var scope = app.Services.CreateScope())
+{
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    try
+    {
+        logger.LogInformation("Iniciando inicialização do banco de dados.");
+        await DatabaseSeeder.InitializeAsync(scope.ServiceProvider, app.Configuration);
+        logger.LogInformation("Inicialização do banco de dados concluída.");
+    }
+    catch (Exception exception)
+    {
+        logger.LogCritical(exception, "Falha ao inicializar o banco de dados. A API subirá, mas operações que consultam o banco poderão falhar.");
     }
 }
 
