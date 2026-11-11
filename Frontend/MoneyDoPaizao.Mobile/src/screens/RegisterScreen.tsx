@@ -1,6 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -55,10 +54,21 @@ export function RegisterScreen({ navigation }: Props) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!success) {
+      return;
+    }
+
+    const timeout = setTimeout(() => navigation.replace('Login'), 1400);
+    return () => clearTimeout(timeout);
+  }, [navigation, success]);
 
   async function handleRegister() {
     setError('');
+    setSuccess('');
     if (!name || !email || !cpf || !birthDate || !password || !confirmPassword) {
       setError('Preencha todos os campos.');
       return;
@@ -78,9 +88,7 @@ export function RegisterScreen({ navigation }: Props) {
     try {
       setLoading(true);
       await register({ name, email, cpf, birthDate: normalizedBirthDate, password, confirmPassword });
-      Alert.alert('Cadastro realizado', 'Agora você já pode entrar no sistema.', [
-        { text: 'Ir para o login', onPress: () => navigation.navigate('Login') },
-      ]);
+      setSuccess('Cadastro criado com sucesso! Redirecionando para o login...');
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : 'Não foi possível realizar o cadastro.');
     } finally {
@@ -167,6 +175,7 @@ export function RegisterScreen({ navigation }: Props) {
             </View>
 
             {error ? <Text className="mb-3 text-[13px] leading-[18px] text-destructive">{error}</Text> : null}
+            {success ? <Text className="mb-3 text-[13px] leading-[18px] text-[#1A7F5A]">{success}</Text> : null}
 
             <Button className="mt-1" disabled={loading} onPress={handleRegister}>
               <ButtonText>{loading ? 'Salvando...' : 'Criar cadastro'}</ButtonText>
