@@ -105,6 +105,7 @@ public static class DatabaseSeeder
             );
 
             ALTER TABLE public.users ADD COLUMN IF NOT EXISTS account_id uuid;
+            ALTER TABLE public.users ADD COLUMN IF NOT EXISTS created_at_utc timestamp without time zone NOT NULL DEFAULT (timezone('utc', now()));
             ALTER TABLE public.accounts ADD COLUMN IF NOT EXISTS use_custom_theme boolean NOT NULL DEFAULT false;
             ALTER TABLE public.accounts ADD COLUMN IF NOT EXISTS primary_color varchar(7) NOT NULL DEFAULT '#071629';
             ALTER TABLE public.accounts ADD COLUMN IF NOT EXISTS secondary_color varchar(7) NOT NULL DEFAULT '#D4A64A';
