@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using MoneyDoPaizao.Application.Services;
+using MoneyDoPaizao.Api.Security;
 
 namespace MoneyDoPaizao.Api.Controllers;
 
@@ -15,6 +16,7 @@ public sealed class DashboardController(IDashboardService dashboardService) : Co
     [HttpGet("summary")]
     public async Task<IActionResult> GetSummary(CancellationToken cancellationToken)
     {
+        if (!User.HasModule("Loans")) return Forbid();
         return Ok(await dashboardService.GetAsync(AccountId, cancellationToken));
     }
 }

@@ -4,6 +4,7 @@ using MoneyDoPaizao.Application.Exceptions;
 using MoneyDoPaizao.Application.Finance;
 using MoneyDoPaizao.Application.Services;
 using System.Security.Claims;
+using MoneyDoPaizao.Api.Security;
 
 namespace MoneyDoPaizao.Api.Controllers;
 
@@ -15,14 +16,23 @@ public sealed class PersonalFinanceController(IPersonalFinanceService financeSer
     private Guid AccountId => Guid.Parse(User.FindFirstValue("accountId")!);
 
     [HttpGet("summary")]
-    public async Task<IActionResult> Summary(CancellationToken cancellationToken) => Ok(await financeService.GetSummaryAsync(AccountId, cancellationToken));
+    public async Task<IActionResult> Summary(CancellationToken cancellationToken)
+    {
+        if (!User.HasModule("PersonalFinance")) return Forbid();
+        return Ok(await financeService.GetSummaryAsync(AccountId, cancellationToken));
+    }
 
     [HttpGet("entries")]
-    public async Task<IActionResult> Entries(CancellationToken cancellationToken) => Ok(await financeService.GetEntriesAsync(AccountId, cancellationToken));
+    public async Task<IActionResult> Entries(CancellationToken cancellationToken)
+    {
+        if (!User.HasModule("PersonalFinance")) return Forbid();
+        return Ok(await financeService.GetEntriesAsync(AccountId, cancellationToken));
+    }
 
     [HttpPost("entries")]
     public async Task<IActionResult> Create(FinanceEntryCreateRequest request, CancellationToken cancellationToken)
     {
+        if (!User.HasModule("PersonalFinance")) return Forbid();
         try
         {
             return Created("api/personal-finance/entries", await financeService.CreateAsync(AccountId, request, cancellationToken));

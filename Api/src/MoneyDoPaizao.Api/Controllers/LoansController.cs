@@ -4,6 +4,7 @@ using System.Security.Claims;
 using MoneyDoPaizao.Application.Exceptions;
 using MoneyDoPaizao.Application.Loans;
 using MoneyDoPaizao.Application.Services;
+using MoneyDoPaizao.Api.Security;
 
 namespace MoneyDoPaizao.Api.Controllers;
 
@@ -17,12 +18,14 @@ public sealed class LoansController(ILoanService loanService) : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
     {
+        if (!User.HasModule("Loans")) return Forbid();
         return Ok(await loanService.GetAllAsync(AccountId, cancellationToken));
     }
 
     [HttpPost]
     public async Task<IActionResult> Create(LoanCreateRequest request, CancellationToken cancellationToken)
     {
+        if (!User.HasModule("Loans")) return Forbid();
         try
         {
             return Created("api/loans", await loanService.CreateAsync(AccountId, request, cancellationToken));
@@ -36,6 +39,7 @@ public sealed class LoansController(ILoanService loanService) : ControllerBase
     [HttpPost("{id:guid}/payments")]
     public async Task<IActionResult> RegisterPayment(Guid id, LoanPaymentRequest request, CancellationToken cancellationToken)
     {
+        if (!User.HasModule("Loans")) return Forbid();
         try
         {
             return Ok(await loanService.RegisterPaymentAsync(AccountId, id, request, cancellationToken));
