@@ -104,6 +104,48 @@ public static class DatabaseSeeder
                 CONSTRAINT account_modules_account_module_unique UNIQUE (account_id, module)
             );
 
+            DO $$
+            BEGIN
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'Id') THEN ALTER TABLE public.users RENAME COLUMN "Id" TO id; END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'Name') THEN ALTER TABLE public.users RENAME COLUMN "Name" TO name; END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'Email') THEN ALTER TABLE public.users RENAME COLUMN "Email" TO email; END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'Cpf') THEN ALTER TABLE public.users RENAME COLUMN "Cpf" TO cpf; END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'BirthDate') THEN ALTER TABLE public.users RENAME COLUMN "BirthDate" TO birth_date; END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'PasswordHash') THEN ALTER TABLE public.users RENAME COLUMN "PasswordHash" TO password_hash; END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'Role') THEN ALTER TABLE public.users RENAME COLUMN "Role" TO role; END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'CreatedAtUtc') THEN
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'created_at_utc') THEN
+                        UPDATE public.users SET created_at_utc = "CreatedAtUtc" WHERE "CreatedAtUtc" IS NOT NULL;
+                        ALTER TABLE public.users DROP COLUMN "CreatedAtUtc";
+                    ELSE
+                        ALTER TABLE public.users RENAME COLUMN "CreatedAtUtc" TO created_at_utc;
+                    END IF;
+                END IF;
+
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'customers' AND column_name = 'Id') THEN ALTER TABLE public.customers RENAME COLUMN "Id" TO id; END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'customers' AND column_name = 'Name') THEN ALTER TABLE public.customers RENAME COLUMN "Name" TO name; END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'customers' AND column_name = 'HasReferral') THEN ALTER TABLE public.customers RENAME COLUMN "HasReferral" TO has_referral; END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'customers' AND column_name = 'Referral') THEN ALTER TABLE public.customers RENAME COLUMN "Referral" TO referral; END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'customers' AND column_name = 'CreatedAtUtc') THEN ALTER TABLE public.customers RENAME COLUMN "CreatedAtUtc" TO created_at_utc; END IF;
+
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'loans' AND column_name = 'Id') THEN ALTER TABLE public.loans RENAME COLUMN "Id" TO id; END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'loans' AND column_name = 'CustomerId') THEN ALTER TABLE public.loans RENAME COLUMN "CustomerId" TO customer_id; END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'loans' AND column_name = 'PrincipalAmount') THEN ALTER TABLE public.loans RENAME COLUMN "PrincipalAmount" TO principal_amount; END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'loans' AND column_name = 'DueDay') THEN ALTER TABLE public.loans RENAME COLUMN "DueDay" TO due_day; END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'loans' AND column_name = 'MonthlyInterestRatePercent') THEN ALTER TABLE public.loans RENAME COLUMN "MonthlyInterestRatePercent" TO monthly_interest_rate_percent; END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'loans' AND column_name = 'LateDailyInterestRatePercent') THEN ALTER TABLE public.loans RENAME COLUMN "LateDailyInterestRatePercent" TO late_daily_interest_rate_percent; END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'loans' AND column_name = 'Status') THEN ALTER TABLE public.loans RENAME COLUMN "Status" TO status; END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'loans' AND column_name = 'CreatedAtUtc') THEN ALTER TABLE public.loans RENAME COLUMN "CreatedAtUtc" TO created_at_utc; END IF;
+
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'loan_payments' AND column_name = 'Id') THEN ALTER TABLE public.loan_payments RENAME COLUMN "Id" TO id; END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'loan_payments' AND column_name = 'LoanId') THEN ALTER TABLE public.loan_payments RENAME COLUMN "LoanId" TO loan_id; END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'loan_payments' AND column_name = 'Type') THEN ALTER TABLE public.loan_payments RENAME COLUMN "Type" TO type; END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'loan_payments' AND column_name = 'Amount') THEN ALTER TABLE public.loan_payments RENAME COLUMN "Amount" TO amount; END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'loan_payments' AND column_name = 'InterestAmount') THEN ALTER TABLE public.loan_payments RENAME COLUMN "InterestAmount" TO interest_amount; END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'loan_payments' AND column_name = 'PrincipalAmount') THEN ALTER TABLE public.loan_payments RENAME COLUMN "PrincipalAmount" TO principal_amount; END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'loan_payments' AND column_name = 'PaidAtUtc') THEN ALTER TABLE public.loan_payments RENAME COLUMN "PaidAtUtc" TO paid_at_utc; END IF;
+            END $$;
+
             ALTER TABLE public.users ADD COLUMN IF NOT EXISTS account_id uuid;
             ALTER TABLE public.users ADD COLUMN IF NOT EXISTS created_at_utc timestamp without time zone NOT NULL DEFAULT (timezone('utc', now()));
             ALTER TABLE public.accounts ADD COLUMN IF NOT EXISTS use_custom_theme boolean NOT NULL DEFAULT false;
