@@ -24,6 +24,11 @@ public static class DatabaseSeeder
         }
         await EnsureApplicationSchemaAsync(context, cancellationToken);
 
+        if (!bool.TryParse(configuration["AdminSeed:Enabled"], out var seedEnabled) || !seedEnabled)
+        {
+            return createdApplicationTables;
+        }
+
         var email = configuration["AdminSeed:Email"] ?? "admin@moneydopaizao.local";
         var existingAdmin = await context.Users.SingleOrDefaultAsync(item => item.Email == email, cancellationToken);
         if (existingAdmin is not null)
@@ -86,10 +91,22 @@ public static class DatabaseSeeder
                 created_at_utc timestamp without time zone NOT NULL DEFAULT (timezone('utc', now()))
             );
 
+            CREATE TABLE IF NOT EXISTS public.account_modules (
+                id uuid PRIMARY KEY,
+                account_id uuid NOT NULL,
+                module varchar(40) NOT NULL,
+                active boolean NOT NULL DEFAULT true,
+                activated_at_utc timestamp without time zone NOT NULL DEFAULT (timezone('utc', now())),
+                CONSTRAINT account_modules_account_module_unique UNIQUE (account_id, module)
+            );
+
             ALTER TABLE public.users ADD COLUMN IF NOT EXISTS account_id uuid;
             ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS account_id uuid;
+            ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS module varchar(40);
             ALTER TABLE public.loans ADD COLUMN IF NOT EXISTS account_id uuid;
             ALTER TABLE public.loan_payments ADD COLUMN IF NOT EXISTS account_id uuid;
+
+            UPDATE public.customers SET module = 'Loans' WHERE module IS NULL;
 
             CREATE TABLE IF NOT EXISTS public.party_themes (
                 id uuid PRIMARY KEY,
@@ -124,10 +141,41 @@ public static class DatabaseSeeder
                 created_at_utc timestamp without time zone NOT NULL DEFAULT (timezone('utc', now()))
             );
 
+            CREATE TABLE IF NOT EXISTS public.products (
+                id uuid PRIMARY KEY,
+                account_id uuid NOT NULL,
+                name varchar(160) NOT NULL,
+                brand varchar(120) NOT NULL,
+                price numeric(18,2) NOT NULL,
+                created_at_utc timestamp without time zone NOT NULL DEFAULT (timezone('utc', now()))
+            );
+
+            CREATE TABLE IF NOT EXISTS public.sales (
+                id uuid PRIMARY KEY,
+                account_id uuid NOT NULL,
+                customer_id uuid NOT NULL,
+                product_id uuid NOT NULL,
+                payment_type varchar(20) NOT NULL,
+                amount numeric(18,2) NOT NULL,
+                due_date timestamp without time zone,
+                status varchar(20) NOT NULL,
+                sold_at_utc timestamp without time zone NOT NULL DEFAULT (timezone('utc', now())),
+                paid_at_utc timestamp without time zone
+            );
+
             INSERT INTO public.accounts (id, name, module)
             SELECT gen_random_uuid(), 'Conta de empréstimos', 'Loans'
             WHERE EXISTS (SELECT 1 FROM public.users WHERE account_id IS NULL)
               AND NOT EXISTS (SELECT 1 FROM public.accounts);
+
+            INSERT INTO public.account_modules (id, account_id, module)
+            SELECT gen_random_uuid(), accounts.id, accounts.module
+            FROM public.accounts
+            WHERE NOT EXISTS (
+                SELECT 1 FROM public.account_modules
+                WHERE account_modules.account_id = accounts.id
+                  AND account_modules.module = accounts.module
+            );
 
             UPDATE public.users
             SET account_id = (SELECT id FROM public.accounts ORDER BY created_at_utc LIMIT 1)

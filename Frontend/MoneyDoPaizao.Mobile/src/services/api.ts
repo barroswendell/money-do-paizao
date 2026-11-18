@@ -5,10 +5,11 @@ export type AuthResponse = {
   email: string;
   role: 'Admin' | 'Usuario';
   accountId: string;
-  module: ProductModule;
+  modules: ProductModule[];
+  activeModule?: ProductModule | null;
 };
 
-export type ProductModule = 'Loans' | 'Parties' | 'PersonalFinance';
+export type ProductModule = 'Loans' | 'Parties' | 'PersonalFinance' | 'Sales';
 
 export type Customer = {
   id: string;
@@ -90,6 +91,38 @@ export type PersonalFinanceSummary = {
   entriesCount: number;
 };
 
+export type Product = {
+  id: string;
+  name: string;
+  brand: string;
+  price: number;
+  createdAtUtc: string;
+};
+
+export type Sale = {
+  id: string;
+  customerId: string;
+  customerName: string;
+  productId: string;
+  productName: string;
+  productBrand: string;
+  amount: number;
+  paymentType: 'Cash' | 'Installment';
+  status: 'Pending' | 'Paid';
+  dueDate?: string | null;
+  soldAtUtc: string;
+  paidAtUtc?: string | null;
+};
+
+export type SalesDashboard = {
+  totalCustomers: number;
+  totalProducts: number;
+  totalSales: number;
+  totalRevenue: number;
+  totalReceived: number;
+  totalPending: number;
+};
+
 type RegisterPayload = {
   name: string;
   email: string;
@@ -97,7 +130,7 @@ type RegisterPayload = {
   birthDate: string;
   password: string;
   confirmPassword: string;
-  module: ProductModule;
+  modules: ProductModule[];
 };
 
 // Web/desktop uses localhost; Android emulator can override with EXPO_PUBLIC_API_URL=http://10.0.2.2:5000/api.
@@ -135,6 +168,14 @@ export function register(payload: RegisterPayload) {
   return request<AuthResponse>('/auth/register', {
     method: 'POST',
     body: JSON.stringify(payload),
+  });
+}
+
+export function activateModule(token: string, module: ProductModule) {
+  return request<AuthResponse>('/account/modules/activate', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify({ module }),
   });
 }
 
@@ -249,4 +290,36 @@ export function createFinanceEntry(token: string, payload: {
     headers: authHeaders(token),
     body: JSON.stringify(payload),
   });
+}
+
+export function getSalesDashboard(token: string) {
+  return request<SalesDashboard>('/sales/dashboard', { method: 'GET', headers: authHeaders(token) });
+}
+
+export function getProducts(token: string) {
+  return request<Product[]>('/sales/products', { method: 'GET', headers: authHeaders(token) });
+}
+
+export function createProduct(token: string, payload: { name: string; brand: string; price: number }) {
+  return request<Product>('/sales/products', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getSales(token: string) {
+  return request<Sale[]>('/sales', { method: 'GET', headers: authHeaders(token) });
+}
+
+export function createSale(token: string, payload: { customerId: string; productId: string; paymentType: 'Cash' | 'Installment'; dueDate?: string | null }) {
+  return request<Sale>('/sales', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+}
+
+export function markSaleAsPaid(token: string, saleId: string) {
+  return request<Sale>(`/sales/${saleId}/pay`, { method: 'POST', headers: authHeaders(token) });
 }

@@ -29,7 +29,12 @@ public sealed class AuthService(
             throw new AuthValidationException("Este CPF já está cadastrado.");
         }
 
-        var account = Account.Create($"Conta de {request.Name.Trim()}", request.Module);
+        var modules = request.Modules.Distinct().ToArray();
+        var account = Account.Create($"Conta de {request.Name.Trim()}", modules[0]);
+        foreach (var module in modules.Skip(1))
+        {
+            account.AddModule(module);
+        }
         await accountRepository.AddAsync(account, cancellationToken);
 
         var user = User.Create(
@@ -45,7 +50,7 @@ public sealed class AuthService(
         await userRepository.AddAsync(user, cancellationToken);
         await accountRepository.SaveChangesAsync(cancellationToken);
 
-        return tokenService.CreateToken(user);
+        return tokenService.CreateToken(user, modules[0]);
     }
 
     public async Task<AuthResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
@@ -97,6 +102,16 @@ public sealed class AuthService(
         if (request.Password != request.ConfirmPassword)
         {
             throw new AuthValidationException("A confirmação de senha não confere.");
+        }
+
+        if (request.Modules is null || request.Modules.Count == 0)
+        {
+            throw new AuthValidationException("Escolha pelo menos um módulo para começar.");
+        }
+
+        if (request.Modules.Any(module => !Enum.IsDefined(module)))
+        {
+            throw new AuthValidationException("Um dos módulos selecionados é inválido.");
         }
     }
 }

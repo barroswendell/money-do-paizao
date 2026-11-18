@@ -45,7 +45,7 @@ public sealed class PartyService(
             throw new BusinessValidationException("O sinal deve ficar entre zero e o valor total.");
         }
 
-        var customer = await customerRepository.GetByIdAsync(accountId, request.CustomerId, cancellationToken);
+        var customer = await customerRepository.GetByIdAsync(accountId, Domain.Enums.ProductModule.Parties, request.CustomerId, cancellationToken);
         if (customer is null)
         {
             throw new BusinessValidationException("O cliente selecionado não foi encontrado.");

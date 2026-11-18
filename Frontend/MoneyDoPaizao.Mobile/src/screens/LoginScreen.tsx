@@ -35,13 +35,12 @@ export function LoginScreen({ navigation }: Props) {
     try {
       setLoading(true);
       const response = await login(email.trim(), password);
-      if (response.module === 'Parties') {
-        navigation.replace('PartyDashboard', { userName: response.name, token: response.token });
-      } else if (response.module === 'PersonalFinance') {
-        navigation.replace('Finance', { token: response.token });
-      } else {
-        navigation.replace('Dashboard', { userName: response.name, role: response.role, token: response.token, module: response.module });
-      }
+      navigation.replace('ModuleSelection', {
+        userName: response.name,
+        role: response.role,
+        token: response.token,
+        modules: response.modules?.length ? response.modules : ['Loans'],
+      });
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : 'Não foi possível entrar.');
     } finally {

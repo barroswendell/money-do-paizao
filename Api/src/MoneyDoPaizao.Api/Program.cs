@@ -30,6 +30,7 @@ builder.Services.AddDbContext<MoneyDoPaizaoDbContext>(options =>
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAccountRepository, AccountRepository>();
+builder.Services.AddScoped<IAccountModuleRepository, AccountModuleRepository>();
 builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
 builder.Services.AddScoped<ILoanRepository, LoanRepository>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasherService>();
@@ -42,6 +43,10 @@ builder.Services.AddScoped<IPartyRepository, PartyRepository>();
 builder.Services.AddScoped<IPersonalFinanceRepository, PersonalFinanceRepository>();
 builder.Services.AddScoped<IPartyService, PartyService>();
 builder.Services.AddScoped<IPersonalFinanceService, PersonalFinanceService>();
+builder.Services.AddScoped<IAccountModuleService, AccountModuleService>();
+builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.AddScoped<ISaleRepository, SaleRepository>();
+builder.Services.AddScoped<ISalesService, SalesService>();
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

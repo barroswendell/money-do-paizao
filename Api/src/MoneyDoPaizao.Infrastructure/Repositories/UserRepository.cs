@@ -9,12 +9,23 @@ public sealed class UserRepository(MoneyDoPaizaoDbContext context) : IUserReposi
 {
     public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
-        return context.Users.Include(item => item.Account).SingleOrDefaultAsync(item => item.Email == email, cancellationToken);
+        return context.Users
+            .Include(item => item.Account!)
+            .ThenInclude(account => account.Modules)
+            .SingleOrDefaultAsync(item => item.Email == email, cancellationToken);
     }
 
     public Task<User?> GetByCpfAsync(string cpf, CancellationToken cancellationToken = default)
     {
         return context.Users.SingleOrDefaultAsync(item => item.Cpf == cpf, cancellationToken);
+    }
+
+    public Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return context.Users
+            .Include(item => item.Account!)
+            .ThenInclude(account => account.Modules)
+            .SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
     }
 
     public async Task AddAsync(User user, CancellationToken cancellationToken = default)

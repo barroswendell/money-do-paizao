@@ -2,12 +2,13 @@ using MoneyDoPaizao.Application.Customers;
 using MoneyDoPaizao.Application.Exceptions;
 using MoneyDoPaizao.Application.Interfaces;
 using MoneyDoPaizao.Domain.Entities;
+using MoneyDoPaizao.Domain.Enums;
 
 namespace MoneyDoPaizao.Application.Services;
 
 public sealed class CustomerService(ICustomerRepository customerRepository) : ICustomerService
 {
-    public async Task<CustomerResponse> CreateAsync(Guid accountId, CustomerCreateRequest request, CancellationToken cancellationToken = default)
+    public async Task<CustomerResponse> CreateAsync(Guid accountId, ProductModule module, CustomerCreateRequest request, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(request.Name) || request.Name.Trim().Length < 3)
         {
@@ -19,15 +20,15 @@ public sealed class CustomerService(ICustomerRepository customerRepository) : IC
             throw new BusinessValidationException("Informe a indicação do cliente.");
         }
 
-        var customer = Customer.Create(accountId, request.Name, request.HasReferral, request.Referral);
+        var customer = Customer.Create(accountId, module, request.Name, request.HasReferral, request.Referral);
         await customerRepository.AddAsync(customer, cancellationToken);
         await customerRepository.SaveChangesAsync(cancellationToken);
         return Map(customer);
     }
 
-    public async Task<IReadOnlyList<CustomerResponse>> GetAllAsync(Guid accountId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<CustomerResponse>> GetAllAsync(Guid accountId, ProductModule module, CancellationToken cancellationToken = default)
     {
-        var customers = await customerRepository.GetAllAsync(accountId, cancellationToken);
+        var customers = await customerRepository.GetAllAsync(accountId, module, cancellationToken);
         return customers.Select(Map).ToList();
     }
 
@@ -39,6 +40,6 @@ public sealed class CustomerService(ICustomerRepository customerRepository) : IC
 
 public interface ICustomerService
 {
-    Task<CustomerResponse> CreateAsync(Guid accountId, CustomerCreateRequest request, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<CustomerResponse>> GetAllAsync(Guid accountId, CancellationToken cancellationToken = default);
+    Task<CustomerResponse> CreateAsync(Guid accountId, ProductModule module, CustomerCreateRequest request, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<CustomerResponse>> GetAllAsync(Guid accountId, ProductModule module, CancellationToken cancellationToken = default);
 }

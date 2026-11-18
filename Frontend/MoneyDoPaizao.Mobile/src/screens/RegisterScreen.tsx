@@ -6,7 +6,7 @@ import {
   ScrollView,
   View,
 } from 'react-native';
-import { ArrowLeft, CreditCard, Eye, EyeOff, HandCoins, LockKeyhole, Mail, PartyPopper, UserRound, WalletCards } from 'lucide-react-native';
+import { ArrowLeft, CreditCard, Eye, EyeOff, HandCoins, LockKeyhole, Mail, PartyPopper, ShoppingBag, UserRound, WalletCards } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { PaizaoLogo } from '../components/brand/PaizaoLogo';
 import { Button, ButtonText } from '../components/ui/button';
@@ -57,6 +57,7 @@ const moduleOptions: { value: ProductModule; title: string; description: string;
   { value: 'Loans', title: 'Empréstimos', description: 'Clientes, juros e recebimentos', icon: HandCoins },
   { value: 'Parties', title: 'Organização de festas', description: 'Agenda, temas e sinais', icon: PartyPopper },
   { value: 'PersonalFinance', title: 'Finanças pessoais', description: 'Entradas, gastos e saldo', icon: WalletCards },
+  { value: 'Sales', title: 'Vendas', description: 'Produtos, vendas e pagamentos', icon: ShoppingBag },
 ];
 
 export function RegisterScreen({ navigation }: Props) {
@@ -66,7 +67,7 @@ export function RegisterScreen({ navigation }: Props) {
   const [birthDate, setBirthDate] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [module, setModule] = useState<ProductModule>('Loans');
+  const [modules, setModules] = useState<ProductModule[]>(['Loans']);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
@@ -90,6 +91,11 @@ export function RegisterScreen({ navigation }: Props) {
       return;
     }
 
+    if (modules.length === 0) {
+      setError('Escolha pelo menos um módulo.');
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError('A confirmação de senha não confere.');
       return;
@@ -103,7 +109,7 @@ export function RegisterScreen({ navigation }: Props) {
 
     try {
       setLoading(true);
-      await register({ name, email, cpf, birthDate: normalizedBirthDate, password, confirmPassword, module });
+      await register({ name, email, cpf, birthDate: normalizedBirthDate, password, confirmPassword, modules });
       setSuccess('Cadastro criado com sucesso! Redirecionando para o login...');
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : 'Não foi possível realizar o cadastro.');
@@ -140,14 +146,14 @@ export function RegisterScreen({ navigation }: Props) {
             <View className="mb-5 gap-2">
               {moduleOptions.map((option) => {
                 const Icon = option.icon;
-                const active = module === option.value;
+                const active = modules.includes(option.value);
                 return (
                   <Pressable
                     accessibilityRole="radio"
                     accessibilityState={{ selected: active }}
                     className={`flex-row items-center rounded-2xl border px-3 py-3 ${active ? 'border-navy bg-navy/5' : 'border-border bg-input'}`}
                     key={option.value}
-                    onPress={() => setModule(option.value)}
+                    onPress={() => setModules((current) => current.includes(option.value) ? current.filter((item) => item !== option.value) : [...current, option.value])}
                   >
                     <View className={`h-10 w-10 items-center justify-center rounded-xl ${active ? 'bg-gold' : 'bg-border/60'}`}>
                       <Icon color="#071629" size={19} strokeWidth={1.8} />

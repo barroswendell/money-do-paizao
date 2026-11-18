@@ -19,6 +19,8 @@ services:
         value: MoneyDoPaizao.Mobile
       - key: AdminSeed__Name
         value: Administrador
+      - key: AdminSeed__Enabled
+        value: "false"
       - key: AdminSeed__Email
         sync: false
       - key: AdminSeed__Cpf

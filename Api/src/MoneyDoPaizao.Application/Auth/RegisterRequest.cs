@@ -9,4 +9,4 @@ public sealed record RegisterRequest(
     DateTime BirthDate,
     string Password,
     string ConfirmPassword,
-    ProductModule Module);
+    IReadOnlyCollection<ProductModule> Modules);

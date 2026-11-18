@@ -1,5 +1,6 @@
 using MoneyDoPaizao.Application.Dashboard;
 using MoneyDoPaizao.Application.Interfaces;
+using MoneyDoPaizao.Domain.Enums;
 
 namespace MoneyDoPaizao.Application.Services;
 
@@ -9,7 +10,7 @@ public sealed class DashboardService(
 {
     public async Task<DashboardResponse> GetAsync(Guid accountId, CancellationToken cancellationToken = default)
     {
-        var customers = await customerRepository.GetAllAsync(accountId, cancellationToken);
+        var customers = await customerRepository.GetAllAsync(accountId, ProductModule.Loans, cancellationToken);
         var loans = await loanRepository.GetAllAsync(accountId, cancellationToken);
         var now = DateTime.UtcNow;
         var activeLoans = loans.Where(loan => loan.Status == Domain.Enums.LoanStatus.Active).ToList();

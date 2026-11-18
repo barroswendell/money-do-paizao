@@ -8,12 +8,15 @@ public sealed class MoneyDoPaizaoDbContext(DbContextOptions<MoneyDoPaizaoDbConte
 {
     public DbSet<User> Users => Set<User>();
     public DbSet<Account> Accounts => Set<Account>();
+    public DbSet<AccountModule> AccountModules => Set<AccountModule>();
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Loan> Loans => Set<Loan>();
     public DbSet<LoanPayment> LoanPayments => Set<LoanPayment>();
     public DbSet<PartyTheme> PartyThemes => Set<PartyTheme>();
     public DbSet<PartyEvent> PartyEvents => Set<PartyEvent>();
     public DbSet<FinanceEntry> FinanceEntries => Set<FinanceEntry>();
+    public DbSet<Product> Products => Set<Product>();
+    public DbSet<Sale> Sales => Set<Sale>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -22,6 +25,14 @@ public sealed class MoneyDoPaizaoDbContext(DbContextOptions<MoneyDoPaizaoDbConte
         account.HasKey(item => item.Id);
         account.Property(item => item.Name).HasMaxLength(160).IsRequired();
         account.Property(item => item.Module).HasConversion<string>().HasMaxLength(40).IsRequired();
+
+        var accountModule = modelBuilder.Entity<AccountModule>();
+        accountModule.ToTable("account_modules");
+        accountModule.HasKey(item => item.Id);
+        accountModule.Property(item => item.Module).HasConversion<string>().HasMaxLength(40).IsRequired();
+        accountModule.Property(item => item.Active).IsRequired();
+        accountModule.HasIndex(item => new { item.AccountId, item.Module }).IsUnique();
+        accountModule.HasOne(item => item.Account).WithMany(item => item.Modules).HasForeignKey(item => item.AccountId).OnDelete(DeleteBehavior.Cascade);
 
         var user = modelBuilder.Entity<User>();
 
@@ -43,6 +54,7 @@ public sealed class MoneyDoPaizaoDbContext(DbContextOptions<MoneyDoPaizaoDbConte
         customer.Property(item => item.Name).HasMaxLength(160).IsRequired();
         customer.Property(item => item.Referral).HasMaxLength(160);
         customer.Property(item => item.AccountId).IsRequired();
+        customer.Property(item => item.Module).HasConversion<string>().HasMaxLength(40).IsRequired();
 
         var loan = modelBuilder.Entity<Loan>();
         loan.ToTable("loans");
@@ -96,5 +108,23 @@ public sealed class MoneyDoPaizaoDbContext(DbContextOptions<MoneyDoPaizaoDbConte
         financeEntry.Property(item => item.Amount).HasPrecision(18, 2).IsRequired();
         financeEntry.Property(item => item.Category).HasMaxLength(120).IsRequired();
         financeEntry.Property(item => item.Description).HasMaxLength(240);
+
+        var product = modelBuilder.Entity<Product>();
+        product.ToTable("products");
+        product.HasKey(item => item.Id);
+        product.Property(item => item.AccountId).IsRequired();
+        product.Property(item => item.Name).HasMaxLength(160).IsRequired();
+        product.Property(item => item.Brand).HasMaxLength(120).IsRequired();
+        product.Property(item => item.Price).HasPrecision(18, 2).IsRequired();
+
+        var sale = modelBuilder.Entity<Sale>();
+        sale.ToTable("sales");
+        sale.HasKey(item => item.Id);
+        sale.Property(item => item.AccountId).IsRequired();
+        sale.Property(item => item.PaymentType).HasConversion<string>().HasMaxLength(20).IsRequired();
+        sale.Property(item => item.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
+        sale.Property(item => item.Amount).HasPrecision(18, 2).IsRequired();
+        sale.HasOne(item => item.Customer).WithMany().HasForeignKey(item => item.CustomerId).OnDelete(DeleteBehavior.Restrict);
+        sale.HasOne(item => item.Product).WithMany().HasForeignKey(item => item.ProductId).OnDelete(DeleteBehavior.Restrict);
     }
 }

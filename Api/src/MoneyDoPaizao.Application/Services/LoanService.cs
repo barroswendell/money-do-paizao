@@ -27,7 +27,7 @@ public sealed class LoanService(
             throw new BusinessValidationException("As taxas de juros não podem ser negativas.");
         }
 
-        var customer = await customerRepository.GetByIdAsync(accountId, request.CustomerId, cancellationToken);
+        var customer = await customerRepository.GetByIdAsync(accountId, ProductModule.Loans, request.CustomerId, cancellationToken);
         if (customer is null)
         {
             throw new BusinessValidationException("O cliente selecionado não foi encontrado.");

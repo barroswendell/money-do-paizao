@@ -7,4 +7,5 @@ public sealed record AuthResponse(
     string Email,
     string Role,
     Guid AccountId,
-    string Module);
+    IReadOnlyList<string> Modules,
+    string? ActiveModule);
