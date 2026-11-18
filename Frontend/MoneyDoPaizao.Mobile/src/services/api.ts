@@ -11,6 +11,13 @@ export type AuthResponse = {
 
 export type ProductModule = 'Loans' | 'Parties' | 'PersonalFinance' | 'Sales';
 
+export type AppearanceSettings = {
+  useCustomTheme: boolean;
+  primaryColor: string;
+  secondaryColor: string;
+  isDarkMode: boolean;
+};
+
 export type Customer = {
   id: string;
   name: string;
@@ -176,6 +183,21 @@ export function activateModule(token: string, module: ProductModule) {
     method: 'POST',
     headers: authHeaders(token),
     body: JSON.stringify({ module }),
+  });
+}
+
+export function getAppearanceSettings(token: string) {
+  return request<AppearanceSettings>('/account/settings', {
+    method: 'GET',
+    headers: authHeaders(token),
+  });
+}
+
+export function updateAppearanceSettings(token: string, payload: AppearanceSettings) {
+  return request<AppearanceSettings>('/account/settings', {
+    method: 'PUT',
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
   });
 }
 

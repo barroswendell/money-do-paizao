@@ -22,6 +22,7 @@ import { Text } from '../components/ui/text';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { getDashboardSummary, type DashboardSummary } from '../services/api';
 import { formatCurrency } from '../lib/format';
+import { useTheme } from '../theme/ThemeProvider';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Dashboard'>;
 
@@ -30,7 +31,7 @@ const menuItems = [
   { label: 'Clientes', icon: Wallet, target: 'Customers' as const },
   { label: 'Empréstimos', icon: HandCoins, target: 'Loans' as const },
   { label: 'Finanças', icon: ReceiptText, target: 'Finance' as const },
-  { label: 'Configurações', icon: Settings, target: 'Dashboard' as const },
+  { label: 'Configurações', icon: Settings, target: 'Settings' as const },
 ];
 
 export function DashboardScreen({ navigation, route }: Props) {
@@ -39,6 +40,7 @@ export function DashboardScreen({ navigation, route }: Props) {
   const [loading, setLoading] = useState(true);
   const { userName, role } = route.params;
   const { token } = route.params;
+  const { colors, resetTheme } = useTheme();
 
   useEffect(() => {
     getDashboardSummary(token)
@@ -60,10 +62,10 @@ export function DashboardScreen({ navigation, route }: Props) {
 
         <View className="flex-row items-center gap-2">
           <Pressable accessibilityLabel="Notificações" className="h-10 w-10 items-center justify-center rounded-xl" onPress={() => undefined}>
-            <Bell color="#071629" size={19} strokeWidth={1.8} />
+            <Bell color={colors.foreground} size={19} strokeWidth={1.8} />
           </Pressable>
           <Pressable accessibilityLabel="Abrir menu" className="h-10 w-10 items-center justify-center rounded-xl bg-navy" onPress={() => setMenuOpen(true)}>
-            <Menu color="#D4A64A" size={20} strokeWidth={2} />
+            <Menu color={colors.secondary} size={20} strokeWidth={2} />
           </Pressable>
         </View>
       </View>
@@ -183,6 +185,7 @@ export function DashboardScreen({ navigation, route }: Props) {
                       if (item.target === 'Customers') navigation.navigate('Customers', { token });
                       if (item.target === 'Loans') navigation.navigate('Loans', { token });
                       if (item.target === 'Finance') navigation.navigate('Finance', { token });
+                      if (item.target === 'Settings') navigation.navigate('Settings', { token });
                     }}
                   >
                     <Icon color={active ? '#D4A64A' : '#FFFFFF'} size={19} strokeWidth={1.8} />
@@ -193,7 +196,7 @@ export function DashboardScreen({ navigation, route }: Props) {
             </View>
 
             <View className="mt-auto border-t border-white/10 pt-5">
-              <Pressable className="flex-row items-center px-3 py-3" onPress={() => navigation.replace('Login')}>
+              <Pressable className="flex-row items-center px-3 py-3" onPress={() => { resetTheme(); navigation.replace('Login'); }}>
                 <LogOut color="#FFFFFF" size={19} strokeWidth={1.8} />
                 <Text className="ml-3 text-[14px] font-semibold text-white/80">Sair</Text>
               </Pressable>

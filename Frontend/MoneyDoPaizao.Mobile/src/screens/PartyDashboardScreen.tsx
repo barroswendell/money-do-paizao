@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
-import { CalendarDays, CalendarPlus, LogOut, Menu, Palette, PartyPopper, ReceiptText, UsersRound, X } from 'lucide-react-native';
+import { CalendarDays, CalendarPlus, LogOut, Menu, Palette, PartyPopper, ReceiptText, Settings, UsersRound, X } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BrandMark } from '../components/brand/BrandMark';
 import { Button, ButtonText } from '../components/ui/button';
@@ -9,6 +9,7 @@ import { Text } from '../components/ui/text';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { getPartyDashboard, type PartyDashboard } from '../services/api';
 import { formatCurrency } from '../lib/format';
+import { useTheme } from '../theme/ThemeProvider';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PartyDashboard'>;
 
@@ -17,6 +18,7 @@ export function PartyDashboardScreen({ navigation, route }: Props) {
   const [summary, setSummary] = useState<PartyDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
+  const { colors, resetTheme } = useTheme();
 
   useEffect(() => {
     getPartyDashboard(token).then(setSummary).catch(() => undefined).finally(() => setLoading(false));
@@ -26,7 +28,7 @@ export function PartyDashboardScreen({ navigation, route }: Props) {
     <View className="flex-1 bg-background">
       <View className="flex-row items-center justify-between border-b border-border bg-surface px-5 pb-4 pt-5">
         <View className="flex-row items-center"><BrandMark /><View className="ml-3"><Text className="text-[17px] font-extrabold text-navy">Se Organiza</Text><Text className="text-[11px] font-medium text-muted">Organização de festas</Text></View></View>
-        <Pressable accessibilityLabel="Abrir menu" className="h-10 w-10 items-center justify-center rounded-xl bg-navy" onPress={() => setMenuOpen(true)}><Menu color="#D4A64A" size={20} /></Pressable>
+        <Pressable accessibilityLabel="Abrir menu" className="h-10 w-10 items-center justify-center rounded-xl bg-navy" onPress={() => setMenuOpen(true)}><Menu color={colors.secondary} size={20} /></Pressable>
       </View>
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }}>
         <View className="mx-auto w-full max-w-2xl">
@@ -43,7 +45,7 @@ export function PartyDashboardScreen({ navigation, route }: Props) {
           <Card className="p-5"><View className="mb-4 flex-row items-center"><PartyPopper color="#D4A64A" size={21} /><View className="ml-2"><Text className="text-[16px] font-extrabold text-navy">Ações rápidas</Text><Text className="text-[12px] text-muted">Organize os próximos passos.</Text></View></View><View className="gap-3"><Button className="flex-row gap-2" onPress={() => navigation.navigate('PartyEvents', { token })}><CalendarPlus color="#071629" size={18} /><ButtonText>Agendar festa</ButtonText></Button><Button className="flex-row gap-2" onPress={() => navigation.navigate('Customers', { token })} variant="outline"><UsersRound color="#071629" size={18} /><ButtonText variant="outline">Cadastrar cliente</ButtonText></Button><Button className="flex-row gap-2" onPress={() => navigation.navigate('PartyThemes', { token })} variant="outline"><Palette color="#071629" size={18} /><ButtonText variant="outline">Cadastrar tema</ButtonText></Button></View></Card>
         </View>
       </ScrollView>
-      {menuOpen ? <View className="absolute inset-0 z-20 flex-row"><Pressable className="flex-1 bg-black/40" onPress={() => setMenuOpen(false)} /><View className="w-[300px] flex-1 bg-navy px-6 pb-8 pt-12"><View className="flex-row items-center justify-between"><View className="flex-row items-center"><BrandMark dark /><View className="ml-3"><Text className="text-[17px] font-extrabold text-white">Se Organiza</Text><Text className="text-[11px] text-white/60">Organização de festas</Text></View></View><Pressable onPress={() => setMenuOpen(false)}><X color="#FFF" size={22} /></Pressable></View><View className="mt-10 gap-2"><Pressable className="flex-row items-center rounded-xl bg-white/10 px-3 py-3" onPress={() => setMenuOpen(false)}><PartyPopper color="#D4A64A" size={19} /><Text className="ml-3 text-[14px] font-semibold text-gold">Visão geral</Text></Pressable><Pressable className="flex-row items-center rounded-xl px-3 py-3" onPress={() => { setMenuOpen(false); navigation.navigate('PartyEvents', { token }); }}><CalendarDays color="#FFF" size={19} /><Text className="ml-3 text-[14px] font-semibold text-white/80">Agenda de festas</Text></Pressable><Pressable className="flex-row items-center rounded-xl px-3 py-3" onPress={() => { setMenuOpen(false); navigation.navigate('PartyThemes', { token }); }}><Palette color="#FFF" size={19} /><Text className="ml-3 text-[14px] font-semibold text-white/80">Temas</Text></Pressable><Pressable className="flex-row items-center rounded-xl px-3 py-3" onPress={() => { setMenuOpen(false); navigation.navigate('Customers', { token }); }}><UsersRound color="#FFF" size={19} /><Text className="ml-3 text-[14px] font-semibold text-white/80">Clientes</Text></Pressable></View><View className="mt-auto border-t border-white/10 pt-5"><Pressable className="flex-row items-center px-3 py-3" onPress={() => navigation.replace('Login')}><LogOut color="#FFF" size={19} /><Text className="ml-3 text-[14px] font-semibold text-white/80">Sair</Text></Pressable></View></View></View> : null}
+      {menuOpen ? <View className="absolute inset-0 z-20 flex-row"><Pressable className="flex-1 bg-black/40" onPress={() => setMenuOpen(false)} /><View className="w-[300px] flex-1 bg-navy px-6 pb-8 pt-12"><View className="flex-row items-center justify-between"><View className="flex-row items-center"><BrandMark dark /><View className="ml-3"><Text className="text-[17px] font-extrabold text-white">Se Organiza</Text><Text className="text-[11px] text-white/60">Organização de festas</Text></View></View><Pressable onPress={() => setMenuOpen(false)}><X color="#FFF" size={22} /></Pressable></View><View className="mt-10 gap-2"><Pressable className="flex-row items-center rounded-xl bg-white/10 px-3 py-3" onPress={() => setMenuOpen(false)}><PartyPopper color={colors.secondary} size={19} /><Text className="ml-3 text-[14px] font-semibold text-gold">Visão geral</Text></Pressable><Pressable className="flex-row items-center rounded-xl px-3 py-3" onPress={() => { setMenuOpen(false); navigation.navigate('PartyEvents', { token }); }}><CalendarDays color="#FFF" size={19} /><Text className="ml-3 text-[14px] font-semibold text-white/80">Agenda de festas</Text></Pressable><Pressable className="flex-row items-center rounded-xl px-3 py-3" onPress={() => { setMenuOpen(false); navigation.navigate('PartyThemes', { token }); }}><Palette color="#FFF" size={19} /><Text className="ml-3 text-[14px] font-semibold text-white/80">Temas</Text></Pressable><Pressable className="flex-row items-center rounded-xl px-3 py-3" onPress={() => { setMenuOpen(false); navigation.navigate('Customers', { token }); }}><UsersRound color="#FFF" size={19} /><Text className="ml-3 text-[14px] font-semibold text-white/80">Clientes</Text></Pressable><Pressable className="flex-row items-center rounded-xl px-3 py-3" onPress={() => { setMenuOpen(false); navigation.navigate('Settings', { token }); }}><Settings color="#FFF" size={19} /><Text className="ml-3 text-[14px] font-semibold text-white/80">Configurações</Text></Pressable></View><View className="mt-auto border-t border-white/10 pt-5"><Pressable className="flex-row items-center px-3 py-3" onPress={() => { resetTheme(); navigation.replace('Login'); }}><LogOut color="#FFF" size={19} /><Text className="ml-3 text-[14px] font-semibold text-white/80">Sair</Text></Pressable></View></View></View> : null}
     </View>
   );
 }

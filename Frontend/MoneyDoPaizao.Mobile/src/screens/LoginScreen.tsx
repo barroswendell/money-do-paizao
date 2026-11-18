@@ -15,6 +15,7 @@ import { Input } from '../components/ui/input';
 import { Text } from '../components/ui/text';
 import { login } from '../services/api';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { useTheme } from '../theme/ThemeProvider';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
@@ -24,9 +25,11 @@ export function LoginScreen({ navigation }: Props) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const { resetTheme } = useTheme();
 
   async function handleLogin() {
     setError('');
+    resetTheme();
     if (!email.trim() || !password) {
       setError('Informe seu e-mail e sua senha.');
       return;
