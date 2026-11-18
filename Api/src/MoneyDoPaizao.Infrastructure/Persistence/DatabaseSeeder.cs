@@ -178,19 +178,19 @@ public static class DatabaseSeeder
             );
 
             UPDATE public.users
-            SET account_id = (SELECT id FROM public.accounts ORDER BY created_at_utc LIMIT 1)
+            SET account_id = (SELECT id FROM public.accounts LIMIT 1)
             WHERE account_id IS NULL;
 
             UPDATE public.customers
-            SET account_id = (SELECT account_id FROM public.users ORDER BY created_at_utc LIMIT 1)
+            SET account_id = (SELECT account_id FROM public.users WHERE account_id IS NOT NULL LIMIT 1)
             WHERE account_id IS NULL;
 
             UPDATE public.loans
-            SET account_id = (SELECT account_id FROM public.users ORDER BY created_at_utc LIMIT 1)
+            SET account_id = (SELECT account_id FROM public.users WHERE account_id IS NOT NULL LIMIT 1)
             WHERE account_id IS NULL;
 
             UPDATE public.loan_payments
-            SET account_id = (SELECT account_id FROM public.users ORDER BY created_at_utc LIMIT 1)
+            SET account_id = (SELECT account_id FROM public.users WHERE account_id IS NOT NULL LIMIT 1)
             WHERE account_id IS NULL;
             """;
 
