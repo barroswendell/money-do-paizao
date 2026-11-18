@@ -8,6 +8,7 @@ namespace MoneyDoPaizao.Application.Services;
 
 public sealed class AuthService(
     IUserRepository userRepository,
+    IAccountRepository accountRepository,
     IPasswordHasher passwordHasher,
     ITokenService tokenService) : IAuthService
 {
@@ -28,16 +29,21 @@ public sealed class AuthService(
             throw new AuthValidationException("Este CPF já está cadastrado.");
         }
 
+        var account = Account.Create($"Conta de {request.Name.Trim()}", request.Module);
+        await accountRepository.AddAsync(account, cancellationToken);
+
         var user = User.Create(
+            account.Id,
             request.Name,
             email,
             cpf,
             request.BirthDate,
             passwordHasher.Hash(request.Password),
             UserRole.Usuario);
+        user.AttachAccount(account);
 
         await userRepository.AddAsync(user, cancellationToken);
-        await userRepository.SaveChangesAsync(cancellationToken);
+        await accountRepository.SaveChangesAsync(cancellationToken);
 
         return tokenService.CreateToken(user);
     }

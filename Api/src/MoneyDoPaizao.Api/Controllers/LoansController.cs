@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using MoneyDoPaizao.Application.Exceptions;
 using MoneyDoPaizao.Application.Loans;
 using MoneyDoPaizao.Application.Services;
@@ -11,10 +12,12 @@ namespace MoneyDoPaizao.Api.Controllers;
 [Route("api/loans")]
 public sealed class LoansController(ILoanService loanService) : ControllerBase
 {
+    private Guid AccountId => Guid.Parse(User.FindFirstValue("accountId")!);
+
     [HttpGet]
     public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
     {
-        return Ok(await loanService.GetAllAsync(cancellationToken));
+        return Ok(await loanService.GetAllAsync(AccountId, cancellationToken));
     }
 
     [HttpPost]
@@ -22,7 +25,7 @@ public sealed class LoansController(ILoanService loanService) : ControllerBase
     {
         try
         {
-            return Created("api/loans", await loanService.CreateAsync(request, cancellationToken));
+            return Created("api/loans", await loanService.CreateAsync(AccountId, request, cancellationToken));
         }
         catch (BusinessValidationException exception)
         {
@@ -35,7 +38,7 @@ public sealed class LoansController(ILoanService loanService) : ControllerBase
     {
         try
         {
-            return Ok(await loanService.RegisterPaymentAsync(id, request, cancellationToken));
+            return Ok(await loanService.RegisterPaymentAsync(AccountId, id, request, cancellationToken));
         }
         catch (BusinessValidationException exception)
         {

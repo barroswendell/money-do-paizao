@@ -7,10 +7,10 @@ public sealed class DashboardService(
     ICustomerRepository customerRepository,
     ILoanRepository loanRepository) : IDashboardService
 {
-    public async Task<DashboardResponse> GetAsync(CancellationToken cancellationToken = default)
+    public async Task<DashboardResponse> GetAsync(Guid accountId, CancellationToken cancellationToken = default)
     {
-        var customers = await customerRepository.GetAllAsync(cancellationToken);
-        var loans = await loanRepository.GetAllAsync(cancellationToken);
+        var customers = await customerRepository.GetAllAsync(accountId, cancellationToken);
+        var loans = await loanRepository.GetAllAsync(accountId, cancellationToken);
         var now = DateTime.UtcNow;
         var activeLoans = loans.Where(loan => loan.Status == Domain.Enums.LoanStatus.Active).ToList();
         var overdueCustomerIds = activeLoans
@@ -35,5 +35,5 @@ public sealed class DashboardService(
 
 public interface IDashboardService
 {
-    Task<DashboardResponse> GetAsync(CancellationToken cancellationToken = default);
+    Task<DashboardResponse> GetAsync(Guid accountId, CancellationToken cancellationToken = default);
 }

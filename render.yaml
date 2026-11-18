@@ -27,3 +27,7 @@ services:
         value: 1990-01-01
       - key: AdminSeed__Password
         sync: false
+      - key: AdminSeed__Module
+        value: Loans
+      - key: AdminSeed__AccountName
+        value: Conta de empréstimos

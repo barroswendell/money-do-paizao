@@ -7,22 +7,23 @@ namespace MoneyDoPaizao.Infrastructure.Repositories;
 
 public sealed class LoanRepository(MoneyDoPaizaoDbContext context) : ILoanRepository
 {
-    public async Task<IReadOnlyList<Loan>> GetAllAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Loan>> GetAllAsync(Guid accountId, CancellationToken cancellationToken = default)
     {
         return await context.Loans
             .Include(item => item.Customer)
             .Include(item => item.Payments)
+            .Where(item => item.AccountId == accountId)
             .AsNoTracking()
             .OrderByDescending(item => item.CreatedAtUtc)
             .ToListAsync(cancellationToken);
     }
 
-    public Task<Loan?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public Task<Loan?> GetByIdAsync(Guid accountId, Guid id, CancellationToken cancellationToken = default)
     {
         return context.Loans
             .Include(item => item.Customer)
             .Include(item => item.Payments)
-            .SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
+            .SingleOrDefaultAsync(item => item.AccountId == accountId && item.Id == id, cancellationToken);
     }
 
     public async Task AddAsync(Loan loan, CancellationToken cancellationToken = default)

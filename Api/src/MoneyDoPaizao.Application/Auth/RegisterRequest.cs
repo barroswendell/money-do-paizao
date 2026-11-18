@@ -1,3 +1,5 @@
+using MoneyDoPaizao.Domain.Enums;
+
 namespace MoneyDoPaizao.Application.Auth;
 
 public sealed record RegisterRequest(
@@ -6,4 +8,5 @@ public sealed record RegisterRequest(
     string Cpf,
     DateTime BirthDate,
     string Password,
-    string ConfirmPassword);
+    string ConfirmPassword,
+    ProductModule Module);

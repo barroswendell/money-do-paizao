@@ -4,7 +4,11 @@ export type AuthResponse = {
   name: string;
   email: string;
   role: 'Admin' | 'Usuario';
+  accountId: string;
+  module: ProductModule;
 };
+
+export type ProductModule = 'Loans' | 'Parties' | 'PersonalFinance';
 
 export type Customer = {
   id: string;
@@ -38,6 +42,54 @@ export type DashboardSummary = {
   customersOverdue: number;
 };
 
+export type PartyTheme = {
+  id: string;
+  name: string;
+  description?: string | null;
+  createdAtUtc: string;
+};
+
+export type PartyEvent = {
+  id: string;
+  customerId: string;
+  customerName: string;
+  themeId?: string | null;
+  themeName?: string | null;
+  eventDate: string;
+  totalAmount: number;
+  depositReceived: boolean;
+  depositAmount: number;
+  remainingAmount: number;
+  notes?: string | null;
+  status: string;
+};
+
+export type PartyDashboard = {
+  upcomingEvents: number;
+  monthlyRevenue: number;
+  monthlyDeposits: number;
+  monthlyPending: number;
+};
+
+export type FinanceEntryType = 'Income' | 'Expense';
+
+export type FinanceEntry = {
+  id: string;
+  type: FinanceEntryType;
+  amount: number;
+  entryDate: string;
+  category: string;
+  description?: string | null;
+  createdAtUtc: string;
+};
+
+export type PersonalFinanceSummary = {
+  monthlyIncome: number;
+  monthlyExpenses: number;
+  monthlyBalance: number;
+  entriesCount: number;
+};
+
 type RegisterPayload = {
   name: string;
   email: string;
@@ -45,6 +97,7 @@ type RegisterPayload = {
   birthDate: string;
   password: string;
   confirmPassword: string;
+  module: ProductModule;
 };
 
 // Web/desktop uses localhost; Android emulator can override with EXPO_PUBLIC_API_URL=http://10.0.2.2:5000/api.
@@ -137,5 +190,63 @@ export function registerLoanPayment(token: string, loanId: string, type: 'Full' 
     method: 'POST',
     headers: authHeaders(token),
     body: JSON.stringify({ type }),
+  });
+}
+
+export function getPartyDashboard(token: string) {
+  return request<PartyDashboard>('/parties/dashboard', { method: 'GET', headers: authHeaders(token) });
+}
+
+export function getPartyThemes(token: string) {
+  return request<PartyTheme[]>('/parties/themes', { method: 'GET', headers: authHeaders(token) });
+}
+
+export function createPartyTheme(token: string, payload: { name: string; description?: string }) {
+  return request<PartyTheme>('/parties/themes', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getPartyEvents(token: string) {
+  return request<PartyEvent[]>('/parties/events', { method: 'GET', headers: authHeaders(token) });
+}
+
+export function createPartyEvent(token: string, payload: {
+  customerId: string;
+  themeId?: string | null;
+  eventDate: string;
+  totalAmount: number;
+  depositReceived: boolean;
+  depositAmount: number;
+  notes?: string;
+}) {
+  return request<PartyEvent>('/parties/events', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getFinanceSummary(token: string) {
+  return request<PersonalFinanceSummary>('/personal-finance/summary', { method: 'GET', headers: authHeaders(token) });
+}
+
+export function getFinanceEntries(token: string) {
+  return request<FinanceEntry[]>('/personal-finance/entries', { method: 'GET', headers: authHeaders(token) });
+}
+
+export function createFinanceEntry(token: string, payload: {
+  type: FinanceEntryType;
+  amount: number;
+  entryDate: string;
+  category: string;
+  description?: string;
+}) {
+  return request<FinanceEntry>('/personal-finance/entries', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
   });
 }

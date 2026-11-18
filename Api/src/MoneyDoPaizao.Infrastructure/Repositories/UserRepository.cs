@@ -9,7 +9,7 @@ public sealed class UserRepository(MoneyDoPaizaoDbContext context) : IUserReposi
 {
     public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
-        return context.Users.SingleOrDefaultAsync(item => item.Email == email, cancellationToken);
+        return context.Users.Include(item => item.Account).SingleOrDefaultAsync(item => item.Email == email, cancellationToken);
     }
 
     public Task<User?> GetByCpfAsync(string cpf, CancellationToken cancellationToken = default)

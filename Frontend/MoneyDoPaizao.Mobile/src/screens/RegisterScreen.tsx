@@ -6,14 +6,15 @@ import {
   ScrollView,
   View,
 } from 'react-native';
-import { ArrowLeft, CalendarDays, CreditCard, Eye, EyeOff, LockKeyhole, Mail, UserRound } from 'lucide-react-native';
+import { ArrowLeft, CreditCard, Eye, EyeOff, HandCoins, LockKeyhole, Mail, PartyPopper, UserRound, WalletCards } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { PaizaoLogo } from '../components/brand/PaizaoLogo';
 import { Button, ButtonText } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Text } from '../components/ui/text';
-import { register } from '../services/api';
+import { DatePickerField } from '../components/DatePickerField';
+import { register, type ProductModule } from '../services/api';
 import { RootStackParamList } from '../navigation/AppNavigator';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Register'>;
@@ -44,6 +45,20 @@ function isValidDate(value: string) {
     && date.getUTCDate() === day;
 }
 
+function formatCpf(value: string) {
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+  if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+}
+
+const moduleOptions: { value: ProductModule; title: string; description: string; icon: typeof HandCoins }[] = [
+  { value: 'Loans', title: 'Empréstimos', description: 'Clientes, juros e recebimentos', icon: HandCoins },
+  { value: 'Parties', title: 'Organização de festas', description: 'Agenda, temas e sinais', icon: PartyPopper },
+  { value: 'PersonalFinance', title: 'Finanças pessoais', description: 'Entradas, gastos e saldo', icon: WalletCards },
+];
+
 export function RegisterScreen({ navigation }: Props) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -51,6 +66,7 @@ export function RegisterScreen({ navigation }: Props) {
   const [birthDate, setBirthDate] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [module, setModule] = useState<ProductModule>('Loans');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
@@ -87,7 +103,7 @@ export function RegisterScreen({ navigation }: Props) {
 
     try {
       setLoading(true);
-      await register({ name, email, cpf, birthDate: normalizedBirthDate, password, confirmPassword });
+      await register({ name, email, cpf, birthDate: normalizedBirthDate, password, confirmPassword, module });
       setSuccess('Cadastro criado com sucesso! Redirecionando para o login...');
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : 'Não foi possível realizar o cadastro.');
@@ -117,8 +133,36 @@ export function RegisterScreen({ navigation }: Props) {
           <Card className="p-5 shadow-sm">
             <Text className="mb-1 text-[19px] font-extrabold text-foreground">Dados pessoais</Text>
             <Text className="mb-5 text-[13px] leading-[19px] text-muted">
-              Seu perfil será criado como usuário padrão.
+              Escolha o espaço que você quer organizar. Seus dados ficam separados dos demais usuários.
             </Text>
+
+            <Text className="mb-2 text-[13px] font-bold text-foreground">O que você quer organizar?</Text>
+            <View className="mb-5 gap-2">
+              {moduleOptions.map((option) => {
+                const Icon = option.icon;
+                const active = module === option.value;
+                return (
+                  <Pressable
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: active }}
+                    className={`flex-row items-center rounded-2xl border px-3 py-3 ${active ? 'border-navy bg-navy/5' : 'border-border bg-input'}`}
+                    key={option.value}
+                    onPress={() => setModule(option.value)}
+                  >
+                    <View className={`h-10 w-10 items-center justify-center rounded-xl ${active ? 'bg-gold' : 'bg-border/60'}`}>
+                      <Icon color="#071629" size={19} strokeWidth={1.8} />
+                    </View>
+                    <View className="ml-3 flex-1">
+                      <Text className="text-[14px] font-extrabold text-navy">{option.title}</Text>
+                      <Text className="mt-0.5 text-[12px] text-muted">{option.description}</Text>
+                    </View>
+                    <View className={`h-5 w-5 items-center justify-center rounded-full border ${active ? 'border-navy' : 'border-border'}`}>
+                      {active ? <View className="h-2.5 w-2.5 rounded-full bg-gold" /> : null}
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
 
             <View className="mb-4">
               <Text className="mb-1.5 text-[13px] font-bold text-foreground">Nome completo</Text>
@@ -140,16 +184,13 @@ export function RegisterScreen({ navigation }: Props) {
               <Text className="mb-1.5 text-[13px] font-bold text-foreground">CPF</Text>
               <View className="flex-row items-center rounded-xl border border-border bg-input px-3.5">
                 <CreditCard color="#6D7784" size={18} strokeWidth={1.8} />
-                <Input className="border-0 bg-transparent px-3" keyboardType="numeric" maxLength={14} onChangeText={setCpf} placeholder="000.000.000-00" value={cpf} />
+                <Input className="border-0 bg-transparent px-3" keyboardType="numeric" maxLength={14} onChangeText={(value) => setCpf(formatCpf(value))} placeholder="000.000.000-00" value={cpf} />
               </View>
             </View>
 
             <View className="mb-4">
               <Text className="mb-1.5 text-[13px] font-bold text-foreground">Data de nascimento</Text>
-              <View className="flex-row items-center rounded-xl border border-border bg-input px-3.5">
-                <CalendarDays color="#6D7784" size={18} strokeWidth={1.8} />
-                <Input className="border-0 bg-transparent px-3" keyboardType="numbers-and-punctuation" onChangeText={setBirthDate} placeholder="DD/MM/AAAA" value={birthDate} />
-              </View>
+              <DatePickerField value={birthDate} onChange={setBirthDate} />
             </View>
 
             <View className="mb-4">

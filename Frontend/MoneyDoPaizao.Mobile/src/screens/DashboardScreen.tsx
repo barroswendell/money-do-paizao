@@ -53,8 +53,8 @@ export function DashboardScreen({ navigation, route }: Props) {
         <View className="flex-row items-center">
           <BrandMark />
           <View className="ml-3">
-            <Text className="text-[17px] font-extrabold text-navy">Paizão</Text>
-            <Text className="text-[11px] font-medium text-muted">Sistema de Empréstimos</Text>
+            <Text className="text-[17px] font-extrabold text-navy">Se Organiza</Text>
+            <Text className="text-[11px] font-medium text-muted">Empréstimos</Text>
           </View>
         </View>
 
@@ -80,7 +80,7 @@ export function DashboardScreen({ navigation, route }: Props) {
           <Card className="mb-5 overflow-hidden border-0 bg-navy p-5">
             <View className="flex-row items-start justify-between">
               <View className="flex-1 pr-4">
-                <Text className="mb-2 text-[11px] font-extrabold tracking-widest text-gold">PAIZÃO</Text>
+                <Text className="mb-2 text-[11px] font-extrabold tracking-widest text-gold">SE ORGANIZA</Text>
                 <Text className="mb-2 text-xl font-extrabold leading-7 text-white">Seu dinheiro, organizado.</Text>
                 <Text className="text-[13px] leading-5 text-white/70">Acompanhe empréstimos, recebimentos e o movimento do mês em um só lugar.</Text>
               </View>
@@ -161,8 +161,8 @@ export function DashboardScreen({ navigation, route }: Props) {
               <View className="flex-row items-center">
                 <BrandMark dark />
                 <View className="ml-3">
-                  <Text className="text-[17px] font-extrabold text-white">Paizão</Text>
-                  <Text className="text-[11px] text-white/60">Sistema de Empréstimos</Text>
+                  <Text className="text-[17px] font-extrabold text-white">Se Organiza</Text>
+                  <Text className="text-[11px] text-white/60">Empréstimos</Text>
                 </View>
               </View>
               <Pressable accessibilityLabel="Fechar menu" onPress={() => setMenuOpen(false)}>

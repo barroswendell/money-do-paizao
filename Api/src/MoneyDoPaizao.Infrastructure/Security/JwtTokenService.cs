@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using MoneyDoPaizao.Application.Auth;
 using MoneyDoPaizao.Application.Interfaces;
 using MoneyDoPaizao.Domain.Entities;
+using MoneyDoPaizao.Domain.Enums;
 
 namespace MoneyDoPaizao.Infrastructure.Security;
 
@@ -24,7 +25,9 @@ public sealed class JwtTokenService(IConfiguration configuration) : ITokenServic
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Name, user.Name),
             new Claim(ClaimTypes.Email, user.Email),
-            new Claim(ClaimTypes.Role, user.Role.ToString())
+            new Claim(ClaimTypes.Role, user.Role.ToString()),
+            new Claim("accountId", user.AccountId.ToString()),
+            new Claim("module", user.Account?.Module.ToString() ?? ProductModule.Loans.ToString())
         };
 
         var credentials = new SigningCredentials(
@@ -43,6 +46,8 @@ public sealed class JwtTokenService(IConfiguration configuration) : ITokenServic
             user.Id,
             user.Name,
             user.Email,
-            user.Role.ToString());
+            user.Role.ToString(),
+            user.AccountId,
+            user.Account?.Module.ToString() ?? ProductModule.Loans.ToString());
     }
 }

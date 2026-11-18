@@ -14,8 +14,8 @@ export function PaizaoLogo({ compact = false, className }: PaizaoLogoProps) {
       <View className={`flex-row items-center ${className ?? ''}`}>
         <BrandMark />
         <View className="ml-3">
-          <Text className="text-[17px] font-black text-navy">Paizão</Text>
-          <Text className="text-[10px] font-medium text-muted">Sistema de Empréstimos</Text>
+          <Text className="text-[17px] font-black text-navy">Se Organiza</Text>
+          <Text className="text-[10px] font-medium text-muted">Controle do seu dia a dia</Text>
         </View>
       </View>
     );
@@ -29,8 +29,8 @@ export function PaizaoLogo({ compact = false, className }: PaizaoLogoProps) {
           <ClipboardCheck color="#071629" size={16} strokeWidth={2} />
         </View>
       </View>
-      <Text className="mt-3 text-2xl font-black tracking-tight text-navy">Paizão</Text>
-      <Text className="mt-0.5 text-[10px] font-bold uppercase tracking-[1.5px] text-muted">Sistema de Empréstimos</Text>
+      <Text className="mt-3 text-2xl font-black tracking-tight text-navy">Se Organiza</Text>
+      <Text className="mt-0.5 text-[10px] font-bold uppercase tracking-[1.5px] text-muted">Controle, confiança e compromisso</Text>
     </View>
   );
 }

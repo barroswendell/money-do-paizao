@@ -5,4 +5,6 @@ public sealed record AuthResponse(
     Guid UserId,
     string Name,
     string Email,
-    string Role);
+    string Role,
+    Guid AccountId,
+    string Module);

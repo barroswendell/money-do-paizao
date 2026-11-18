@@ -17,25 +17,29 @@ public static class DatabaseSeeder
         var context = services.GetRequiredService<MoneyDoPaizaoDbContext>();
         await context.Database.EnsureCreatedAsync(cancellationToken);
         var createdApplicationTables = false;
-
-        // O Supabase já possui tabelas internas em outros schemas. Nessa situação,
-        // EnsureCreated pode entender que o banco já foi criado e não gerar as
-        // tabelas do aplicativo. Verificamos uma tabela nossa especificamente.
         if (!await ApplicationTablesExistAsync(context, cancellationToken))
         {
-            var createScript = context.Database.GenerateCreateScript();
-            await context.Database.ExecuteSqlRawAsync(createScript, cancellationToken);
+            await context.Database.ExecuteSqlRawAsync(context.Database.GenerateCreateScript(), cancellationToken);
             createdApplicationTables = true;
         }
+        await EnsureApplicationSchemaAsync(context, cancellationToken);
 
         var email = configuration["AdminSeed:Email"] ?? "admin@moneydopaizao.local";
-        if (await context.Users.AnyAsync(item => item.Email == email, cancellationToken))
+        var existingAdmin = await context.Users.SingleOrDefaultAsync(item => item.Email == email, cancellationToken);
+        if (existingAdmin is not null)
         {
             return createdApplicationTables;
         }
 
         var hasher = services.GetRequiredService<IPasswordHasher>();
+        var module = Enum.TryParse<ProductModule>(configuration["AdminSeed:Module"], true, out var configuredModule)
+            ? configuredModule
+            : ProductModule.Loans;
+        var account = Account.Create(
+            configuration["AdminSeed:AccountName"] ?? "Conta de empréstimos",
+            module);
         var admin = User.Create(
+            account.Id,
             configuration["AdminSeed:Name"] ?? "Administrador",
             email,
             configuration["AdminSeed:Cpf"] ?? "00000000000",
@@ -45,9 +49,10 @@ public static class DatabaseSeeder
             hasher.Hash(configuration["AdminSeed:Password"] ?? "Admin@123"),
             UserRole.Admin);
 
+        await context.Accounts.AddAsync(account, cancellationToken);
         await context.Users.AddAsync(admin, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
-        return createdApplicationTables;
+        return true;
     }
 
     private static async Task<bool> ApplicationTablesExistAsync(
@@ -55,25 +60,92 @@ public static class DatabaseSeeder
         CancellationToken cancellationToken)
     {
         await context.Database.OpenConnectionAsync(cancellationToken);
-
         try
         {
             await using var command = context.Database.GetDbConnection().CreateCommand();
-            command.CommandText = """
-                SELECT EXISTS (
-                    SELECT 1
-                    FROM information_schema.tables
-                    WHERE table_schema = 'public'
-                      AND table_name = 'users'
-                );
-                """;
-
-            var result = await command.ExecuteScalarAsync(cancellationToken);
-            return result is bool exists && exists;
+            command.CommandText = "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users');";
+            return (bool)(await command.ExecuteScalarAsync(cancellationToken) ?? false);
         }
         finally
         {
             await context.Database.CloseConnectionAsync();
         }
+    }
+
+    private static async Task EnsureApplicationSchemaAsync(
+        MoneyDoPaizaoDbContext context,
+        CancellationToken cancellationToken)
+    {
+        // The first version of the app was deployed before the account/workspace
+        // model existed. This is idempotent and preserves existing Supabase data.
+        const string sql = """
+            CREATE TABLE IF NOT EXISTS public.accounts (
+                id uuid PRIMARY KEY,
+                name varchar(160) NOT NULL,
+                module varchar(40) NOT NULL DEFAULT 'Loans',
+                created_at_utc timestamp without time zone NOT NULL DEFAULT (timezone('utc', now()))
+            );
+
+            ALTER TABLE public.users ADD COLUMN IF NOT EXISTS account_id uuid;
+            ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS account_id uuid;
+            ALTER TABLE public.loans ADD COLUMN IF NOT EXISTS account_id uuid;
+            ALTER TABLE public.loan_payments ADD COLUMN IF NOT EXISTS account_id uuid;
+
+            CREATE TABLE IF NOT EXISTS public.party_themes (
+                id uuid PRIMARY KEY,
+                account_id uuid NOT NULL,
+                name varchar(160) NOT NULL,
+                description varchar(240),
+                created_at_utc timestamp without time zone NOT NULL DEFAULT (timezone('utc', now()))
+            );
+
+            CREATE TABLE IF NOT EXISTS public.party_events (
+                id uuid PRIMARY KEY,
+                account_id uuid NOT NULL,
+                customer_id uuid NOT NULL,
+                theme_id uuid,
+                event_date timestamp without time zone NOT NULL,
+                total_amount numeric(18,2) NOT NULL,
+                deposit_received boolean NOT NULL DEFAULT false,
+                deposit_amount numeric(18,2) NOT NULL DEFAULT 0,
+                notes varchar(500),
+                status varchar(30) NOT NULL DEFAULT 'Scheduled',
+                created_at_utc timestamp without time zone NOT NULL DEFAULT (timezone('utc', now()))
+            );
+
+            CREATE TABLE IF NOT EXISTS public.finance_entries (
+                id uuid PRIMARY KEY,
+                account_id uuid NOT NULL,
+                type varchar(20) NOT NULL,
+                amount numeric(18,2) NOT NULL,
+                entry_date timestamp without time zone NOT NULL,
+                category varchar(120) NOT NULL,
+                description varchar(240),
+                created_at_utc timestamp without time zone NOT NULL DEFAULT (timezone('utc', now()))
+            );
+
+            INSERT INTO public.accounts (id, name, module)
+            SELECT gen_random_uuid(), 'Conta de empréstimos', 'Loans'
+            WHERE EXISTS (SELECT 1 FROM public.users WHERE account_id IS NULL)
+              AND NOT EXISTS (SELECT 1 FROM public.accounts);
+
+            UPDATE public.users
+            SET account_id = (SELECT id FROM public.accounts ORDER BY created_at_utc LIMIT 1)
+            WHERE account_id IS NULL;
+
+            UPDATE public.customers
+            SET account_id = (SELECT account_id FROM public.users ORDER BY created_at_utc LIMIT 1)
+            WHERE account_id IS NULL;
+
+            UPDATE public.loans
+            SET account_id = (SELECT account_id FROM public.users ORDER BY created_at_utc LIMIT 1)
+            WHERE account_id IS NULL;
+
+            UPDATE public.loan_payments
+            SET account_id = (SELECT account_id FROM public.users ORDER BY created_at_utc LIMIT 1)
+            WHERE account_id IS NULL;
+            """;
+
+        await context.Database.ExecuteSqlRawAsync(sql, cancellationToken);
     }
 }

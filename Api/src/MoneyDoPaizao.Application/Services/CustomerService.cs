@@ -7,7 +7,7 @@ namespace MoneyDoPaizao.Application.Services;
 
 public sealed class CustomerService(ICustomerRepository customerRepository) : ICustomerService
 {
-    public async Task<CustomerResponse> CreateAsync(CustomerCreateRequest request, CancellationToken cancellationToken = default)
+    public async Task<CustomerResponse> CreateAsync(Guid accountId, CustomerCreateRequest request, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(request.Name) || request.Name.Trim().Length < 3)
         {
@@ -19,15 +19,15 @@ public sealed class CustomerService(ICustomerRepository customerRepository) : IC
             throw new BusinessValidationException("Informe a indicação do cliente.");
         }
 
-        var customer = Customer.Create(request.Name, request.HasReferral, request.Referral);
+        var customer = Customer.Create(accountId, request.Name, request.HasReferral, request.Referral);
         await customerRepository.AddAsync(customer, cancellationToken);
         await customerRepository.SaveChangesAsync(cancellationToken);
         return Map(customer);
     }
 
-    public async Task<IReadOnlyList<CustomerResponse>> GetAllAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<CustomerResponse>> GetAllAsync(Guid accountId, CancellationToken cancellationToken = default)
     {
-        var customers = await customerRepository.GetAllAsync(cancellationToken);
+        var customers = await customerRepository.GetAllAsync(accountId, cancellationToken);
         return customers.Select(Map).ToList();
     }
 
@@ -39,6 +39,6 @@ public sealed class CustomerService(ICustomerRepository customerRepository) : IC
 
 public interface ICustomerService
 {
-    Task<CustomerResponse> CreateAsync(CustomerCreateRequest request, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<CustomerResponse>> GetAllAsync(CancellationToken cancellationToken = default);
+    Task<CustomerResponse> CreateAsync(Guid accountId, CustomerCreateRequest request, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<CustomerResponse>> GetAllAsync(Guid accountId, CancellationToken cancellationToken = default);
 }

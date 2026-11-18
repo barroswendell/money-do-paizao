@@ -9,6 +9,7 @@ public sealed class LoanPayment
     }
 
     private LoanPayment(
+        Guid accountId,
         Guid loanId,
         LoanPaymentType type,
         decimal amount,
@@ -16,6 +17,7 @@ public sealed class LoanPayment
         decimal principalAmount)
     {
         Id = Guid.NewGuid();
+        AccountId = accountId;
         LoanId = loanId;
         Type = type;
         Amount = amount;
@@ -25,6 +27,7 @@ public sealed class LoanPayment
     }
 
     public Guid Id { get; private set; }
+    public Guid AccountId { get; private set; }
     public Guid LoanId { get; private set; }
     public Loan? Loan { get; private set; }
     public LoanPaymentType Type { get; private set; }
@@ -34,12 +37,13 @@ public sealed class LoanPayment
     public DateTime PaidAtUtc { get; private set; }
 
     public static LoanPayment Create(
+        Guid accountId,
         Guid loanId,
         LoanPaymentType type,
         decimal amount,
         decimal interestAmount,
         decimal principalAmount)
     {
-        return new LoanPayment(loanId, type, amount, interestAmount, principalAmount);
+        return new LoanPayment(accountId, loanId, type, amount, interestAmount, principalAmount);
     }
 }

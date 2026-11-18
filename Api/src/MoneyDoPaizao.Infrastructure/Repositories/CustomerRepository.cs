@@ -7,17 +7,18 @@ namespace MoneyDoPaizao.Infrastructure.Repositories;
 
 public sealed class CustomerRepository(MoneyDoPaizaoDbContext context) : ICustomerRepository
 {
-    public async Task<IReadOnlyList<Customer>> GetAllAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Customer>> GetAllAsync(Guid accountId, CancellationToken cancellationToken = default)
     {
         return await context.Customers
+            .Where(item => item.AccountId == accountId)
             .AsNoTracking()
             .OrderBy(item => item.Name)
             .ToListAsync(cancellationToken);
     }
 
-    public Task<Customer?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public Task<Customer?> GetByIdAsync(Guid accountId, Guid id, CancellationToken cancellationToken = default)
     {
-        return context.Customers.SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
+        return context.Customers.SingleOrDefaultAsync(item => item.AccountId == accountId && item.Id == id, cancellationToken);
     }
 
     public async Task AddAsync(Customer customer, CancellationToken cancellationToken = default)

@@ -8,13 +8,15 @@ using MoneyDoPaizao.Infrastructure.Persistence;
 using MoneyDoPaizao.Infrastructure.Repositories;
 using MoneyDoPaizao.Infrastructure.Security;
 using MoneyDoPaizao.Api.Middleware;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 var jwtKey = builder.Configuration["Jwt:Key"]
              ?? throw new InvalidOperationException("Jwt:Key não foi configurada.");
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Development", policy =>
@@ -27,6 +29,7 @@ builder.Services.AddDbContext<MoneyDoPaizaoDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IAccountRepository, AccountRepository>();
 builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
 builder.Services.AddScoped<ILoanRepository, LoanRepository>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasherService>();
@@ -35,6 +38,10 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<ILoanService, LoanService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<IPartyRepository, PartyRepository>();
+builder.Services.AddScoped<IPersonalFinanceRepository, PersonalFinanceRepository>();
+builder.Services.AddScoped<IPartyService, PartyService>();
+builder.Services.AddScoped<IPersonalFinanceService, PersonalFinanceService>();
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

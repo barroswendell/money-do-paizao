@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Money do Paizão",
-    "slug": "money-do-paizao",
+    "name": "Se Organiza",
+    "slug": "se-organiza",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -9,9 +9,9 @@
     "web": {
       "bundler": "metro",
       "favicon": "./assets/paizao-logo.png",
-      "name": "Paizão – Sistema de Empréstimos",
-      "shortName": "Paizão",
-      "description": "Controle, confiança e compromisso para empréstimos e finanças.",
+      "name": "Se Organiza – Empréstimos, festas e finanças",
+      "shortName": "Se Organiza",
+      "description": "Controle, confiança e compromisso para organizar sua vida.",
       "themeColor": "#071629",
       "backgroundColor": "#F6F8FB",
       "display": "standalone",
@@ -26,6 +26,9 @@
       "adaptiveIcon": {
         "backgroundColor": "#0B1F33"
       }
-    }
+    },
+    "plugins": [
+      "@react-native-community/datetimepicker"
+    ]
   }
 }

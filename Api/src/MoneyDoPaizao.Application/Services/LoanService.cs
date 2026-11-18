@@ -10,7 +10,7 @@ public sealed class LoanService(
     ILoanRepository loanRepository,
     ICustomerRepository customerRepository) : ILoanService
 {
-    public async Task<LoanResponse> CreateAsync(LoanCreateRequest request, CancellationToken cancellationToken = default)
+    public async Task<LoanResponse> CreateAsync(Guid accountId, LoanCreateRequest request, CancellationToken cancellationToken = default)
     {
         if (request.PrincipalAmount <= 0)
         {
@@ -27,13 +27,14 @@ public sealed class LoanService(
             throw new BusinessValidationException("As taxas de juros não podem ser negativas.");
         }
 
-        var customer = await customerRepository.GetByIdAsync(request.CustomerId, cancellationToken);
+        var customer = await customerRepository.GetByIdAsync(accountId, request.CustomerId, cancellationToken);
         if (customer is null)
         {
             throw new BusinessValidationException("O cliente selecionado não foi encontrado.");
         }
 
         var loan = Loan.Create(
+            accountId,
             request.CustomerId,
             request.PrincipalAmount,
             request.DueDay,
@@ -46,16 +47,16 @@ public sealed class LoanService(
         return Map(loan, DateTime.UtcNow);
     }
 
-    public async Task<IReadOnlyList<LoanResponse>> GetAllAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<LoanResponse>> GetAllAsync(Guid accountId, CancellationToken cancellationToken = default)
     {
-        var loans = await loanRepository.GetAllAsync(cancellationToken);
+        var loans = await loanRepository.GetAllAsync(accountId, cancellationToken);
         var now = DateTime.UtcNow;
         return loans.Select(loan => Map(loan, now)).ToList();
     }
 
-    public async Task<LoanResponse> RegisterPaymentAsync(Guid id, LoanPaymentRequest request, CancellationToken cancellationToken = default)
+    public async Task<LoanResponse> RegisterPaymentAsync(Guid accountId, Guid id, LoanPaymentRequest request, CancellationToken cancellationToken = default)
     {
-        var loan = await loanRepository.GetByIdAsync(id, cancellationToken);
+        var loan = await loanRepository.GetByIdAsync(accountId, id, cancellationToken);
         if (loan is null)
         {
             throw new BusinessValidationException("Empréstimo não encontrado.");
@@ -74,8 +75,8 @@ public sealed class LoanService(
 
         var calculation = LoanCalculator.Calculate(loan, DateTime.UtcNow);
         var payment = type == LoanPaymentType.Full
-            ? LoanPayment.Create(loan.Id, type, calculation.TotalDue, calculation.InterestDue, loan.PrincipalAmount)
-            : LoanPayment.Create(loan.Id, type, calculation.InterestDue, calculation.InterestDue, 0);
+            ? LoanPayment.Create(accountId, loan.Id, type, calculation.TotalDue, calculation.InterestDue, loan.PrincipalAmount)
+            : LoanPayment.Create(accountId, loan.Id, type, calculation.InterestDue, calculation.InterestDue, 0);
 
         await loanRepository.AddPaymentAsync(payment, cancellationToken);
         if (type == LoanPaymentType.Full)
@@ -109,9 +110,9 @@ public sealed class LoanService(
 
 public interface ILoanService
 {
-    Task<LoanResponse> CreateAsync(LoanCreateRequest request, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<LoanResponse>> GetAllAsync(CancellationToken cancellationToken = default);
-    Task<LoanResponse> RegisterPaymentAsync(Guid id, LoanPaymentRequest request, CancellationToken cancellationToken = default);
+    Task<LoanResponse> CreateAsync(Guid accountId, LoanCreateRequest request, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<LoanResponse>> GetAllAsync(Guid accountId, CancellationToken cancellationToken = default);
+    Task<LoanResponse> RegisterPaymentAsync(Guid accountId, Guid id, LoanPaymentRequest request, CancellationToken cancellationToken = default);
 }
 
 public static class LoanCalculator

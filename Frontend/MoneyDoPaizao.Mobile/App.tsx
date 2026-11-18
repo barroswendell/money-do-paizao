@@ -33,7 +33,7 @@ function configureProgressiveWebApp() {
   addMeta('mobile-web-app-capable', 'yes');
   addMeta('apple-mobile-web-app-capable', 'yes');
   addMeta('apple-mobile-web-app-status-bar-style', 'black-translucent');
-  addMeta('apple-mobile-web-app-title', 'Paizão');
+  addMeta('apple-mobile-web-app-title', 'Se Organiza');
 
   if (!document.querySelector('link[rel="apple-touch-icon"]')) {
     const appleIcon = document.createElement('link');
