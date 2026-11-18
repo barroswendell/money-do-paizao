@@ -25,6 +25,10 @@ public sealed class MoneyDoPaizaoDbContext(DbContextOptions<MoneyDoPaizaoDbConte
         account.HasKey(item => item.Id);
         account.Property(item => item.Name).HasMaxLength(160).IsRequired();
         account.Property(item => item.Module).HasConversion<string>().HasMaxLength(40).IsRequired();
+        account.Property(item => item.UseCustomTheme).IsRequired();
+        account.Property(item => item.PrimaryColor).HasMaxLength(7).IsRequired();
+        account.Property(item => item.SecondaryColor).HasMaxLength(7).IsRequired();
+        account.Property(item => item.IsDarkMode).IsRequired();
 
         var accountModule = modelBuilder.Entity<AccountModule>();
         accountModule.ToTable("account_modules");

@@ -30,6 +30,7 @@ builder.Services.AddDbContext<MoneyDoPaizaoDbContext>(options =>
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAccountRepository, AccountRepository>();
+builder.Services.AddScoped<IAppearanceService, AppearanceService>();
 builder.Services.AddScoped<IAccountModuleRepository, AccountModuleRepository>();
 builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
 builder.Services.AddScoped<ILoanRepository, LoanRepository>();

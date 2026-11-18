@@ -5,6 +5,7 @@ import { Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import './global.css';
 import { AppNavigator } from './src/navigation/AppNavigator';
+import { ThemeProvider } from './src/theme/ThemeProvider';
 
 function configureProgressiveWebApp() {
   if (Platform.OS !== 'web' || typeof document === 'undefined') {
@@ -53,11 +54,13 @@ export default function App() {
   }, []);
 
   return (
-    <SafeAreaProvider>
-      <NavigationContainer>
-        <StatusBar style="dark" />
-        <AppNavigator />
-      </NavigationContainer>
-    </SafeAreaProvider>
+    <ThemeProvider>
+      <SafeAreaProvider>
+        <NavigationContainer>
+          <StatusBar style="auto" />
+          <AppNavigator />
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </ThemeProvider>
   );
 }

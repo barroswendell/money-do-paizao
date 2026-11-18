@@ -4,6 +4,9 @@ namespace MoneyDoPaizao.Domain.Entities;
 
 public sealed class Account
 {
+    public const string DefaultPrimaryColor = "#071629";
+    public const string DefaultSecondaryColor = "#D4A64A";
+
     private Account()
     {
     }
@@ -20,6 +23,10 @@ public sealed class Account
     public string Name { get; private set; } = string.Empty;
     public ProductModule Module { get; private set; }
     public DateTime CreatedAtUtc { get; private set; }
+    public bool UseCustomTheme { get; private set; }
+    public string PrimaryColor { get; private set; } = DefaultPrimaryColor;
+    public string SecondaryColor { get; private set; } = DefaultSecondaryColor;
+    public bool IsDarkMode { get; private set; }
     public ICollection<AccountModule> Modules { get; private set; } = new List<AccountModule>();
 
     public static Account Create(string name, ProductModule module)
@@ -33,5 +40,13 @@ public sealed class Account
     {
         if (Modules.Any(item => item.Module == module && item.Active)) return;
         Modules.Add(AccountModule.Create(Id, module));
+    }
+
+    public void UpdateAppearance(bool useCustomTheme, string primaryColor, string secondaryColor, bool isDarkMode)
+    {
+        UseCustomTheme = useCustomTheme;
+        PrimaryColor = primaryColor;
+        SecondaryColor = secondaryColor;
+        IsDarkMode = isDarkMode;
     }
 }

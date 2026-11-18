@@ -88,7 +88,11 @@ public static class DatabaseSeeder
                 id uuid PRIMARY KEY,
                 name varchar(160) NOT NULL,
                 module varchar(40) NOT NULL DEFAULT 'Loans',
-                created_at_utc timestamp without time zone NOT NULL DEFAULT (timezone('utc', now()))
+                created_at_utc timestamp without time zone NOT NULL DEFAULT (timezone('utc', now())),
+                use_custom_theme boolean NOT NULL DEFAULT false,
+                primary_color varchar(7) NOT NULL DEFAULT '#071629',
+                secondary_color varchar(7) NOT NULL DEFAULT '#D4A64A',
+                is_dark_mode boolean NOT NULL DEFAULT false
             );
 
             CREATE TABLE IF NOT EXISTS public.account_modules (
@@ -101,6 +105,10 @@ public static class DatabaseSeeder
             );
 
             ALTER TABLE public.users ADD COLUMN IF NOT EXISTS account_id uuid;
+            ALTER TABLE public.accounts ADD COLUMN IF NOT EXISTS use_custom_theme boolean NOT NULL DEFAULT false;
+            ALTER TABLE public.accounts ADD COLUMN IF NOT EXISTS primary_color varchar(7) NOT NULL DEFAULT '#071629';
+            ALTER TABLE public.accounts ADD COLUMN IF NOT EXISTS secondary_color varchar(7) NOT NULL DEFAULT '#D4A64A';
+            ALTER TABLE public.accounts ADD COLUMN IF NOT EXISTS is_dark_mode boolean NOT NULL DEFAULT false;
             ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS account_id uuid;
             ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS module varchar(40);
             ALTER TABLE public.loans ADD COLUMN IF NOT EXISTS account_id uuid;
