@@ -71,7 +71,7 @@ export function LoginScreen({ navigation }: Props) {
             </Text>
 
             <View className="mb-4">
-              <Text className="mb-1.5 text-[13px] font-bold text-foreground">E-mail</Text>
+              <Text className="mb-1.5 text-[14px] font-bold text-foreground">E-mail</Text>
               <View className="flex-row items-center rounded-xl border border-border bg-input px-3.5">
                 <Mail color="#6D7784" size={18} strokeWidth={1.8} />
                 <Input
@@ -87,7 +87,7 @@ export function LoginScreen({ navigation }: Props) {
             </View>
 
             <View className="mb-4">
-              <Text className="mb-1.5 text-[13px] font-bold text-foreground">Senha</Text>
+              <Text className="mb-1.5 text-[14px] font-bold text-foreground">Senha</Text>
               <View className="flex-row items-center rounded-xl border border-border bg-input px-3.5">
                 <LockKeyhole color="#6D7784" size={18} strokeWidth={1.8} />
                 <Input

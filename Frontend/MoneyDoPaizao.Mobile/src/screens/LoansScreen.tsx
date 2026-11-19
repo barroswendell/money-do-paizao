@@ -116,7 +116,7 @@ export function LoansScreen({ navigation, route }: Props) {
               <Text className="mb-1 text-[18px] font-extrabold text-navy">Novo empréstimo</Text>
               <Text className="mb-5 text-[13px] leading-5 text-muted">Defina o cliente, vencimento e as regras de juros.</Text>
 
-              <Text className="mb-1.5 text-[13px] font-bold text-navy">Cliente</Text>
+              <Text className="mb-1.5 text-[14px] font-bold text-navy">Cliente</Text>
               <Pressable className="mb-3 flex-row items-center justify-between rounded-xl border border-border bg-input px-4 py-3.5" onPress={() => setPickerOpen((current) => !current)}>
                 <View className="flex-row items-center">
                   <WalletCards color="#6D7784" size={18} strokeWidth={1.8} />
@@ -136,7 +136,7 @@ export function LoansScreen({ navigation, route }: Props) {
                 </View>
               ) : null}
 
-              <Text className="mb-1.5 text-[13px] font-bold text-navy">Valor do empréstimo</Text>
+              <Text className="mb-1.5 text-[14px] font-bold text-navy">Valor do empréstimo</Text>
               <View className="mb-4 flex-row items-center rounded-xl border border-border bg-input px-3.5">
                 <HandCoins color="#6D7784" size={18} strokeWidth={1.8} />
                 <Input className="border-0 bg-transparent px-3" keyboardType="decimal-pad" onChangeText={setPrincipalAmount} placeholder="Ex.: 1000,00" value={principalAmount} />
@@ -144,11 +144,11 @@ export function LoansScreen({ navigation, route }: Props) {
 
               <View className="flex-row gap-3">
                 <View className="mb-4 flex-1">
-                  <Text className="mb-1.5 text-[13px] font-bold text-navy">Dia do vencimento</Text>
+                  <Text className="mb-1.5 text-[14px] font-bold text-navy">Dia do vencimento</Text>
                   <Input keyboardType="number-pad" onChangeText={setDueDay} placeholder="Ex.: 10" value={dueDay} />
                 </View>
                 <View className="mb-4 flex-1">
-                  <Text className="mb-1.5 text-[13px] font-bold text-navy">Juros mensal (%)</Text>
+                  <Text className="mb-1.5 text-[14px] font-bold text-navy">Juros mensal (%)</Text>
                   <View className="flex-row items-center rounded-xl border border-border bg-input px-3">
                     <Input className="border-0 bg-transparent px-1" keyboardType="decimal-pad" onChangeText={setMonthlyInterest} placeholder="Ex.: 10" value={monthlyInterest} />
                     <Percent color="#6D7784" size={17} strokeWidth={1.8} />
@@ -156,7 +156,7 @@ export function LoansScreen({ navigation, route }: Props) {
                 </View>
               </View>
 
-              <Text className="mb-1.5 text-[13px] font-bold text-navy">Juros por atraso ao dia (%)</Text>
+              <Text className="mb-1.5 text-[14px] font-bold text-navy">Juros por atraso ao dia (%)</Text>
               <View className="mb-4 flex-row items-center rounded-xl border border-border bg-input px-3">
                 <CalendarClock color="#6D7784" size={18} strokeWidth={1.8} />
                 <Input className="border-0 bg-transparent px-3" keyboardType="decimal-pad" onChangeText={setLateDailyInterest} placeholder="Ex.: 0,5" value={lateDailyInterest} />
@@ -235,7 +235,7 @@ export function LoansScreen({ navigation, route }: Props) {
                       <View className="mb-3 border-b border-border pb-3 last:mb-0 last:border-b-0 last:pb-0" key={`${payment.type}-${payment.paidAtUtc}`}>
                         <View className="flex-row items-start justify-between">
                           <View className="flex-1 pr-3">
-                            <Text className="text-[13px] font-bold text-navy">{payment.type === 'Full' ? 'Empréstimo finalizado' : 'Pagamento somente de juros'}</Text>
+                            <Text className="text-[14px] font-bold text-navy">{payment.type === 'Full' ? 'Empréstimo finalizado' : 'Pagamento somente de juros'}</Text>
                             <Text className="mt-1 text-[12px] text-muted">{formatDate(payment.paidAtUtc)}</Text>
                           </View>
                           <Text className="text-[13px] font-extrabold text-navy">{formatCurrency(payment.amount)}</Text>

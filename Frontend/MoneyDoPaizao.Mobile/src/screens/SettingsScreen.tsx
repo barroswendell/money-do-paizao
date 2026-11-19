@@ -103,10 +103,10 @@ export function SettingsScreen({ navigation, route }: Props) {
             </View>
 
             {useCustomTheme ? <>
-              <Text className="mb-1.5 text-[13px] font-bold text-navy">Cor primária</Text>
+              <Text className="mb-1.5 text-[14px] font-bold text-navy">Cor primária</Text>
               <View className="mb-3 flex-row items-center"><View className="mr-2 h-10 w-10 rounded-xl border border-border" style={{ backgroundColor: isHexColor(primaryColor) ? primaryColor : '#FFFFFF' }} /><Input className="flex-1" autoCapitalize="characters" maxLength={7} onChangeText={setPrimaryColor} placeholder="#071629" value={primaryColor} /></View>
               <View className="mb-4 flex-row flex-wrap gap-2">{colorOptions.map((color) => <Pressable accessibilityLabel={`Escolher cor ${color}`} className="h-8 w-8 rounded-full border-2 border-white shadow-sm" key={`primary-${color}`} onPress={() => setPrimaryColor(color)} style={{ backgroundColor: color }} />)}</View>
-              <Text className="mb-1.5 text-[13px] font-bold text-navy">Cor secundária</Text>
+              <Text className="mb-1.5 text-[14px] font-bold text-navy">Cor secundária</Text>
               <View className="mb-3 flex-row items-center"><View className="mr-2 h-10 w-10 rounded-xl border border-border" style={{ backgroundColor: isHexColor(secondaryColor) ? secondaryColor : '#FFFFFF' }} /><Input className="flex-1" autoCapitalize="characters" maxLength={7} onChangeText={setSecondaryColor} placeholder="#D4A64A" value={secondaryColor} /></View>
               <View className="mb-2 flex-row flex-wrap gap-2">{colorOptions.map((color) => <Pressable accessibilityLabel={`Escolher cor ${color}`} className="h-8 w-8 rounded-full border-2 border-white shadow-sm" key={`secondary-${color}`} onPress={() => setSecondaryColor(color)} style={{ backgroundColor: color }} />)}</View>
               <Pressable className="mt-3 self-start" onPress={restoreDefault}><Text className="text-[12px] font-bold text-primary">Voltar para cores padrão</Text></Pressable>
@@ -116,8 +116,8 @@ export function SettingsScreen({ navigation, route }: Props) {
           <Card className="mb-5 p-5">
             <View className="mb-4 flex-row items-center"><Moon color={colors.secondary} size={20} /><View className="ml-3"><Text className="text-[16px] font-extrabold text-navy">Modo de exibição</Text><Text className="mt-1 text-[12px] text-muted">Escolha entre o modo claro e o modo escuro.</Text></View></View>
             <View className="flex-row gap-3">
-              <Pressable className={`flex-1 flex-row items-center justify-center rounded-xl border px-3 py-3 ${!isDarkMode ? 'border-navy bg-gold/20' : 'border-border'}`} onPress={() => setIsDarkMode(false)}><Sun color={colors.foreground} size={17} /><Text className="ml-2 text-[13px] font-bold text-navy">Modo claro</Text></Pressable>
-              <Pressable className={`flex-1 flex-row items-center justify-center rounded-xl border px-3 py-3 ${isDarkMode ? 'border-navy bg-gold/20' : 'border-border'}`} onPress={() => setIsDarkMode(true)}><Moon color={colors.foreground} size={17} /><Text className="ml-2 text-[13px] font-bold text-navy">Modo escuro</Text></Pressable>
+              <Pressable className={`flex-1 flex-row items-center justify-center rounded-xl border px-3 py-3 ${!isDarkMode ? 'border-navy bg-gold/20' : 'border-border'}`} onPress={() => setIsDarkMode(false)}><Sun color={colors.foreground} size={17} /><Text className="ml-2 text-[14px] font-bold text-navy">Modo claro</Text></Pressable>
+              <Pressable className={`flex-1 flex-row items-center justify-center rounded-xl border px-3 py-3 ${isDarkMode ? 'border-navy bg-gold/20' : 'border-border'}`} onPress={() => setIsDarkMode(true)}><Moon color={colors.foreground} size={17} /><Text className="ml-2 text-[14px] font-bold text-navy">Modo escuro</Text></Pressable>
             </View>
           </Card>
 

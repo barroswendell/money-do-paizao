@@ -132,18 +132,18 @@ export function FinanceScreen({ navigation, route }: Props) {
               <View className="mb-4 flex-row gap-2">
                 <Pressable className={`flex-1 flex-row items-center justify-center rounded-xl border px-3 py-3 ${type === 'Income' ? 'border-navy bg-gold/20' : 'border-border'}`} onPress={() => setType('Income')}>
                   <ArrowUpRight color="#1A7F5A" size={17} />
-                  <Text className="ml-2 text-[13px] font-bold text-navy">Entrada</Text>
+                  <Text className="ml-2 text-[14px] font-bold text-navy">Entrada</Text>
                 </Pressable>
                 <Pressable className={`flex-1 flex-row items-center justify-center rounded-xl border px-3 py-3 ${type === 'Expense' ? 'border-navy bg-gold/20' : 'border-border'}`} onPress={() => setType('Expense')}>
                   <ArrowDownRight color="#B42318" size={17} />
-                  <Text className="ml-2 text-[13px] font-bold text-navy">Gasto</Text>
+                  <Text className="ml-2 text-[14px] font-bold text-navy">Gasto</Text>
                 </Pressable>
               </View>
-              <Text className="mb-1.5 text-[13px] font-bold text-navy">Valor</Text>
+              <Text className="mb-1.5 text-[14px] font-bold text-navy">Valor</Text>
               <Input className="mb-4" keyboardType="decimal-pad" onChangeText={setAmount} placeholder="Ex.: 250,00" value={amount} />
-              <Text className="mb-1.5 text-[13px] font-bold text-navy">Categoria</Text>
+              <Text className="mb-1.5 text-[14px] font-bold text-navy">Categoria</Text>
               <Input className="mb-4" onChangeText={setCategory} placeholder="Ex.: Alimentação" value={category} />
-              <Text className="mb-1.5 text-[13px] font-bold text-navy">Descrição (opcional)</Text>
+              <Text className="mb-1.5 text-[14px] font-bold text-navy">Descrição (opcional)</Text>
               <Input className="mb-4" onChangeText={setDescription} placeholder="Detalhes do lançamento" value={description} />
               <Button disabled={saving} onPress={handleCreate}><ButtonText>{saving ? 'Salvando...' : 'Salvar lançamento'}</ButtonText></Button>
             </Card>

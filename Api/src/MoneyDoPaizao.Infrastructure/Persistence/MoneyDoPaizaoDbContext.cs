@@ -97,6 +97,7 @@ public sealed class MoneyDoPaizaoDbContext(DbContextOptions<MoneyDoPaizaoDbConte
         partyEvent.ToTable("party_events");
         partyEvent.HasKey(item => item.Id);
         partyEvent.Property(item => item.AccountId).IsRequired();
+        partyEvent.Property(item => item.EventDate).HasColumnType("timestamp without time zone").IsRequired();
         partyEvent.Property(item => item.TotalAmount).HasPrecision(18, 2).IsRequired();
         partyEvent.Property(item => item.DepositAmount).HasPrecision(18, 2).IsRequired();
         partyEvent.Property(item => item.Notes).HasMaxLength(500);
@@ -110,6 +111,7 @@ public sealed class MoneyDoPaizaoDbContext(DbContextOptions<MoneyDoPaizaoDbConte
         financeEntry.Property(item => item.AccountId).IsRequired();
         financeEntry.Property(item => item.Type).HasConversion<string>().HasMaxLength(20).IsRequired();
         financeEntry.Property(item => item.Amount).HasPrecision(18, 2).IsRequired();
+        financeEntry.Property(item => item.EntryDate).HasColumnType("timestamp without time zone").IsRequired();
         financeEntry.Property(item => item.Category).HasMaxLength(120).IsRequired();
         financeEntry.Property(item => item.Description).HasMaxLength(240);
 
@@ -128,6 +130,7 @@ public sealed class MoneyDoPaizaoDbContext(DbContextOptions<MoneyDoPaizaoDbConte
         sale.Property(item => item.PaymentType).HasConversion<string>().HasMaxLength(20).IsRequired();
         sale.Property(item => item.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
         sale.Property(item => item.Amount).HasPrecision(18, 2).IsRequired();
+        sale.Property(item => item.DueDate).HasColumnType("timestamp without time zone");
         sale.HasOne(item => item.Customer).WithMany().HasForeignKey(item => item.CustomerId).OnDelete(DeleteBehavior.Restrict);
         sale.HasOne(item => item.Product).WithMany().HasForeignKey(item => item.ProductId).OnDelete(DeleteBehavior.Restrict);
     }

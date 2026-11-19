@@ -78,7 +78,7 @@ export function CustomersScreen({ navigation, route }: Props) {
               <Text className="mb-1 text-[18px] font-extrabold text-navy">Novo cliente</Text>
               <Text className="mb-5 text-[13px] leading-5 text-muted">Informe os dados básicos para criar o cadastro.</Text>
 
-              <Text className="mb-1.5 text-[13px] font-bold text-navy">Nome completo</Text>
+              <Text className="mb-1.5 text-[14px] font-bold text-navy">Nome completo</Text>
               <View className="mb-4 flex-row items-center rounded-xl border border-border bg-input px-3.5">
                 <UserRound color="#6D7784" size={18} strokeWidth={1.8} />
                 <Input className="border-0 bg-transparent px-3" onChangeText={setName} placeholder="Nome do cliente" value={name} />
@@ -98,7 +98,7 @@ export function CustomersScreen({ navigation, route }: Props) {
 
               {hasReferral ? (
                 <View className="mb-4">
-                  <Text className="mb-1.5 text-[13px] font-bold text-navy">Indicação</Text>
+                  <Text className="mb-1.5 text-[14px] font-bold text-navy">Indicação</Text>
                   <Input onChangeText={setReferral} placeholder="Nome de quem indicou" value={referral} />
                 </View>
               ) : null}

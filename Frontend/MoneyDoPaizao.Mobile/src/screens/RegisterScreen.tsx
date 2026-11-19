@@ -142,7 +142,7 @@ export function RegisterScreen({ navigation }: Props) {
               Escolha o espaço que você quer organizar. Seus dados ficam separados dos demais usuários.
             </Text>
 
-            <Text className="mb-2 text-[13px] font-bold text-foreground">O que você quer organizar?</Text>
+            <Text className="mb-2 text-[14px] font-bold text-foreground">O que você quer organizar?</Text>
             <View className="mb-5 gap-2">
               {moduleOptions.map((option) => {
                 const Icon = option.icon;
@@ -171,7 +171,7 @@ export function RegisterScreen({ navigation }: Props) {
             </View>
 
             <View className="mb-4">
-              <Text className="mb-1.5 text-[13px] font-bold text-foreground">Nome completo</Text>
+              <Text className="mb-1.5 text-[14px] font-bold text-foreground">Nome completo</Text>
               <View className="flex-row items-center rounded-xl border border-border bg-input px-3.5">
                 <UserRound color="#6D7784" size={18} strokeWidth={1.8} />
                 <Input className="border-0 bg-transparent px-3" onChangeText={setName} placeholder="Seu nome" value={name} />
@@ -179,7 +179,7 @@ export function RegisterScreen({ navigation }: Props) {
             </View>
 
             <View className="mb-4">
-              <Text className="mb-1.5 text-[13px] font-bold text-foreground">E-mail</Text>
+              <Text className="mb-1.5 text-[14px] font-bold text-foreground">E-mail</Text>
               <View className="flex-row items-center rounded-xl border border-border bg-input px-3.5">
                 <Mail color="#6D7784" size={18} strokeWidth={1.8} />
                 <Input autoCapitalize="none" className="border-0 bg-transparent px-3" keyboardType="email-address" onChangeText={setEmail} placeholder="seu@email.com" value={email} />
@@ -187,7 +187,7 @@ export function RegisterScreen({ navigation }: Props) {
             </View>
 
             <View className="mb-4">
-              <Text className="mb-1.5 text-[13px] font-bold text-foreground">CPF</Text>
+              <Text className="mb-1.5 text-[14px] font-bold text-foreground">CPF</Text>
               <View className="flex-row items-center rounded-xl border border-border bg-input px-3.5">
                 <CreditCard color="#6D7784" size={18} strokeWidth={1.8} />
                 <Input className="border-0 bg-transparent px-3" keyboardType="numeric" maxLength={14} onChangeText={(value) => setCpf(formatCpf(value))} placeholder="000.000.000-00" value={cpf} />
@@ -195,12 +195,12 @@ export function RegisterScreen({ navigation }: Props) {
             </View>
 
             <View className="mb-4">
-              <Text className="mb-1.5 text-[13px] font-bold text-foreground">Data de nascimento</Text>
+              <Text className="mb-1.5 text-[14px] font-bold text-foreground">Data de nascimento</Text>
               <DatePickerField value={birthDate} onChange={setBirthDate} />
             </View>
 
             <View className="mb-4">
-              <Text className="mb-1.5 text-[13px] font-bold text-foreground">Senha</Text>
+              <Text className="mb-1.5 text-[14px] font-bold text-foreground">Senha</Text>
               <View className="flex-row items-center rounded-xl border border-border bg-input px-3.5">
                 <LockKeyhole color="#6D7784" size={18} strokeWidth={1.8} />
                 <Input className="border-0 bg-transparent px-3" onChangeText={setPassword} placeholder="Mínimo de 6 caracteres" secureTextEntry={!showPassword} value={password} />
@@ -211,7 +211,7 @@ export function RegisterScreen({ navigation }: Props) {
             </View>
 
             <View className="mb-4">
-              <Text className="mb-1.5 text-[13px] font-bold text-foreground">Confirmar senha</Text>
+              <Text className="mb-1.5 text-[14px] font-bold text-foreground">Confirmar senha</Text>
               <View className="flex-row items-center rounded-xl border border-border bg-input px-3.5">
                 <LockKeyhole color="#6D7784" size={18} strokeWidth={1.8} />
                 <Input className="border-0 bg-transparent px-3" onChangeText={setConfirmPassword} placeholder="Repita sua senha" secureTextEntry={!showConfirmPassword} value={confirmPassword} />
