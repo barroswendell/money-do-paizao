@@ -142,7 +142,7 @@ export type SalesDashboard = {
 type RegisterPayload = {
   name: string;
   email: string;
-  cpf: string;
+  phone: string;
   birthDate: string;
   password: string;
   confirmPassword: string;

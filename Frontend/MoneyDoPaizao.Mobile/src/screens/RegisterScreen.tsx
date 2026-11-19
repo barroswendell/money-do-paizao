@@ -6,7 +6,7 @@ import {
   ScrollView,
   View,
 } from 'react-native';
-import { ArrowLeft, CreditCard, Eye, EyeOff, HandCoins, LockKeyhole, Mail, PartyPopper, ShoppingBag, UserRound, WalletCards } from 'lucide-react-native';
+import { ArrowLeft, Eye, EyeOff, HandCoins, LockKeyhole, Mail, PartyPopper, Phone, ShoppingBag, UserRound, WalletCards } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { PaizaoLogo } from '../components/brand/PaizaoLogo';
 import { Button, ButtonText } from '../components/ui/button';
@@ -45,12 +45,12 @@ function isValidDate(value: string) {
     && date.getUTCDate() === day;
 }
 
-function formatCpf(value: string) {
+function formatPhone(value: string) {
   const digits = value.replace(/\D/g, '').slice(0, 11);
-  if (digits.length <= 3) return digits;
-  if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
-  if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
-  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+  if (digits.length <= 2) return digits.length ? `(${digits}` : '';
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
 }
 
 const moduleOptions: { value: ProductModule; title: string; description: string; icon: typeof HandCoins }[] = [
@@ -63,7 +63,7 @@ const moduleOptions: { value: ProductModule; title: string; description: string;
 export function RegisterScreen({ navigation }: Props) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [cpf, setCpf] = useState('');
+  const [phone, setPhone] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -86,7 +86,7 @@ export function RegisterScreen({ navigation }: Props) {
   async function handleRegister() {
     setError('');
     setSuccess('');
-    if (!name || !email || !cpf || !birthDate || !password || !confirmPassword) {
+    if (!name || !email || !phone || !birthDate || !password || !confirmPassword) {
       setError('Preencha todos os campos.');
       return;
     }
@@ -109,7 +109,7 @@ export function RegisterScreen({ navigation }: Props) {
 
     try {
       setLoading(true);
-      await register({ name, email, cpf, birthDate: normalizedBirthDate, password, confirmPassword, modules });
+      await register({ name, email, phone, birthDate: normalizedBirthDate, password, confirmPassword, modules });
       setSuccess('Cadastro criado com sucesso! Redirecionando para o login...');
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : 'Não foi possível realizar o cadastro.');
@@ -187,10 +187,10 @@ export function RegisterScreen({ navigation }: Props) {
             </View>
 
             <View className="mb-4">
-              <Text className="mb-1.5 text-[14px] font-bold text-foreground">CPF</Text>
+              <Text className="mb-1.5 text-[14px] font-bold text-foreground">Telefone</Text>
               <View className="flex-row items-center rounded-xl border border-border bg-input px-3.5">
-                <CreditCard color="#6D7784" size={18} strokeWidth={1.8} />
-                <Input className="border-0 bg-transparent px-3" keyboardType="numeric" maxLength={14} onChangeText={(value) => setCpf(formatCpf(value))} placeholder="000.000.000-00" value={cpf} />
+                <Phone color="#6D7784" size={18} strokeWidth={1.8} />
+                <Input autoComplete="tel" className="border-0 bg-transparent px-3" keyboardType="phone-pad" maxLength={15} onChangeText={(value) => setPhone(formatPhone(value))} placeholder="(00) 00000-0000" value={phone} />
               </View>
             </View>
 

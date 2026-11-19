@@ -14,6 +14,7 @@ import { ProductsScreen } from '../screens/ProductsScreen';
 import { SalesScreen } from '../screens/SalesScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import type { ProductModule } from '../services/api';
+import type { AuthResponse } from '../services/api';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -45,12 +46,16 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-export function AppNavigator() {
+export function AppNavigator({ session }: { session: AuthResponse | null }) {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator initialRouteName={session ? 'ModuleSelection' : 'Login'} screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
-      <Stack.Screen name="ModuleSelection" component={ModuleSelectionScreen} />
+      <Stack.Screen
+        name="ModuleSelection"
+        component={ModuleSelectionScreen}
+        initialParams={session ? { userName: session.name, role: session.role, token: session.token, modules: session.modules } : undefined}
+      />
       <Stack.Screen name="Dashboard" component={DashboardScreen} />
       <Stack.Screen name="Customers" component={CustomersScreen} />
       <Stack.Screen name="Loans" component={LoansScreen} />

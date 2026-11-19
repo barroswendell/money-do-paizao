@@ -8,6 +8,7 @@ import { Input } from '../components/ui/input';
 import { Text } from '../components/ui/text';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { createFinanceEntry, getFinanceEntries, getFinanceSummary, type FinanceEntry, type FinanceEntryType, type PersonalFinanceSummary } from '../services/api';
+import { clearSession } from '../services/session';
 import { formatCurrency, formatDate } from '../lib/format';
 import { useTheme } from '../theme/ThemeProvider';
 
@@ -182,7 +183,7 @@ export function FinanceScreen({ navigation, route }: Props) {
               <Pressable className="flex-row items-center rounded-xl px-3 py-3" onPress={() => { setMenuOpen(false); navigation.navigate('Settings', { token }); }}><Settings color="#FFF" size={19} /><Text className="ml-3 text-[14px] font-semibold text-white/80">Configurações</Text></Pressable>
             </View>
             <Pressable className="mt-5 flex-row items-center rounded-xl border border-gold/40 px-3 py-3" onPress={() => { setMenuOpen(false); navigation.replace('ModuleSelection', { userName, role, token, modules }); }}><ArrowLeftRight color="#D4A64A" size={19} /><Text className="ml-3 text-[14px] font-semibold text-gold">Trocar de módulo</Text></Pressable>
-            <View className="mt-auto border-t border-white/10 pt-5"><Pressable className="flex-row items-center px-3 py-3" onPress={() => { resetTheme(); navigation.replace('Login'); }}><LogOut color="#FFF" size={19} /><Text className="ml-3 text-[14px] font-semibold text-white/80">Sair</Text></Pressable></View>
+            <View className="mt-auto border-t border-white/10 pt-5"><Pressable className="flex-row items-center px-3 py-3" onPress={() => { void clearSession(); resetTheme(); navigation.replace('Login'); }}><LogOut color="#FFF" size={19} /><Text className="ml-3 text-[14px] font-semibold text-white/80">Sair</Text></Pressable></View>
           </View>
         </View>
       ) : null}

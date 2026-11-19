@@ -17,16 +17,16 @@ public sealed class AuthService(
         ValidateRegisterRequest(request);
 
         var email = request.Email.Trim().ToLowerInvariant();
-        var cpf = new string(request.Cpf.Where(char.IsDigit).ToArray());
+        var phone = new string((request.Phone ?? string.Empty).Where(char.IsDigit).ToArray());
 
         if (await userRepository.GetByEmailAsync(email, cancellationToken) is not null)
         {
             throw new AuthValidationException("Este e-mail já está cadastrado.");
         }
 
-        if (await userRepository.GetByCpfAsync(cpf, cancellationToken) is not null)
+        if (await userRepository.GetByPhoneAsync(phone, cancellationToken) is not null)
         {
-            throw new AuthValidationException("Este CPF já está cadastrado.");
+            throw new AuthValidationException("Este telefone já está cadastrado.");
         }
 
         var modules = request.Modules.Distinct().ToArray();
@@ -41,7 +41,8 @@ public sealed class AuthService(
             account.Id,
             request.Name,
             email,
-            cpf,
+            null,
+            phone,
             request.BirthDate,
             passwordHasher.Hash(request.Password),
             UserRole.Usuario);
@@ -83,10 +84,10 @@ public sealed class AuthService(
             throw new AuthValidationException("Informe um e-mail válido.");
         }
 
-        var cpf = new string(request.Cpf.Where(char.IsDigit).ToArray());
-        if (cpf.Length != 11)
+        var phone = new string((request.Phone ?? string.Empty).Where(char.IsDigit).ToArray());
+        if (phone.Length is < 10 or > 11)
         {
-            throw new AuthValidationException("Informe um CPF válido.");
+            throw new AuthValidationException("Informe um telefone válido com DDD.");
         }
 
         if (request.BirthDate.Date >= DateTime.UtcNow.Date)

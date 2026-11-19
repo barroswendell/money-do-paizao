@@ -17,7 +17,7 @@ public sealed class JwtTokenService(IConfiguration configuration) : ITokenServic
         var key = configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key não foi configurada.");
         var issuer = configuration["Jwt:Issuer"] ?? "MoneyDoPaizao.Api";
         var audience = configuration["Jwt:Audience"] ?? "MoneyDoPaizao.Mobile";
-        var expirationMinutes = int.TryParse(configuration["Jwt:ExpirationInMinutes"], out var minutes) ? minutes : 120;
+        var expirationMinutes = int.TryParse(configuration["Jwt:ExpirationInMinutes"], out var minutes) ? minutes : 10080;
 
         var modules = user.Account?.Modules
             .Where(item => item.Active)

@@ -22,6 +22,7 @@ import { Card } from '../components/ui/card';
 import { Text } from '../components/ui/text';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { getDashboardSummary, type DashboardSummary } from '../services/api';
+import { clearSession } from '../services/session';
 import { formatCurrency } from '../lib/format';
 import { useTheme } from '../theme/ThemeProvider';
 
@@ -207,7 +208,7 @@ export function DashboardScreen({ navigation, route }: Props) {
             </Pressable>
 
             <View className="mt-auto border-t border-white/10 pt-5">
-              <Pressable className="flex-row items-center px-3 py-3" onPress={() => { resetTheme(); navigation.replace('Login'); }}>
+              <Pressable className="flex-row items-center px-3 py-3" onPress={() => { void clearSession(); resetTheme(); navigation.replace('Login'); }}>
                 <LogOut color="#FFFFFF" size={19} strokeWidth={1.8} />
                 <Text className="ml-3 text-[14px] font-semibold text-white/80">Sair</Text>
               </Pressable>

@@ -5,7 +5,7 @@ namespace MoneyDoPaizao.Application.Auth;
 public sealed record RegisterRequest(
     string Name,
     string Email,
-    string Cpf,
+    string? Phone,
     DateTime BirthDate,
     string Password,
     string ConfirmPassword,

@@ -14,6 +14,7 @@ import { Card } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Text } from '../components/ui/text';
 import { login } from '../services/api';
+import { saveSession } from '../services/session';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { useTheme } from '../theme/ThemeProvider';
 
@@ -38,6 +39,7 @@ export function LoginScreen({ navigation }: Props) {
     try {
       setLoading(true);
       const response = await login(email.trim(), password);
+      await saveSession(response);
       navigation.replace('ModuleSelection', {
         userName: response.name,
         role: response.role,

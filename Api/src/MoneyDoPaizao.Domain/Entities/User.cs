@@ -8,13 +8,14 @@ public sealed class User
     {
     }
 
-    private User(Guid accountId, string name, string email, string cpf, DateTime birthDate, string passwordHash, UserRole role)
+    private User(Guid accountId, string name, string email, string? cpf, string? phone, DateTime birthDate, string passwordHash, UserRole role)
     {
         Id = Guid.NewGuid();
         AccountId = accountId;
         Name = name.Trim();
         Email = email.Trim().ToLowerInvariant();
-        Cpf = new string(cpf.Where(char.IsDigit).ToArray());
+        Cpf = string.IsNullOrWhiteSpace(cpf) ? null : new string(cpf.Where(char.IsDigit).ToArray());
+        Phone = string.IsNullOrWhiteSpace(phone) ? null : new string(phone.Where(char.IsDigit).ToArray());
         BirthDate = birthDate.Date;
         PasswordHash = passwordHash;
         Role = role;
@@ -26,15 +27,16 @@ public sealed class User
     public Account? Account { get; private set; }
     public string Name { get; private set; } = string.Empty;
     public string Email { get; private set; } = string.Empty;
-    public string Cpf { get; private set; } = string.Empty;
+    public string? Cpf { get; private set; }
+    public string? Phone { get; private set; }
     public DateTime BirthDate { get; private set; }
     public string PasswordHash { get; private set; } = string.Empty;
     public UserRole Role { get; private set; }
     public DateTime CreatedAtUtc { get; private set; }
 
-    public static User Create(Guid accountId, string name, string email, string cpf, DateTime birthDate, string passwordHash, UserRole role)
+    public static User Create(Guid accountId, string name, string email, string? cpf, string? phone, DateTime birthDate, string passwordHash, UserRole role)
     {
-        return new User(accountId, name, email, cpf, birthDate, passwordHash, role);
+        return new User(accountId, name, email, cpf, phone, birthDate, passwordHash, role);
     }
 
     public void ChangePasswordHash(string passwordHash)

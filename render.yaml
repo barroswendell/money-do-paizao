@@ -17,6 +17,8 @@ services:
         value: MoneyDoPaizao.Api
       - key: Jwt__Audience
         value: MoneyDoPaizao.Mobile
+      - key: Jwt__ExpirationInMinutes
+        value: "10080"
       - key: AdminSeed__Name
         value: Administrador
       - key: AdminSeed__Enabled

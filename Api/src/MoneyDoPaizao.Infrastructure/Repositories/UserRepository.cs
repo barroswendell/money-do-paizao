@@ -20,6 +20,11 @@ public sealed class UserRepository(MoneyDoPaizaoDbContext context) : IUserReposi
         return context.Users.SingleOrDefaultAsync(item => item.Cpf == cpf, cancellationToken);
     }
 
+    public Task<User?> GetByPhoneAsync(string phone, CancellationToken cancellationToken = default)
+    {
+        return context.Users.SingleOrDefaultAsync(item => item.Phone == phone, cancellationToken);
+    }
+
     public Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return context.Users

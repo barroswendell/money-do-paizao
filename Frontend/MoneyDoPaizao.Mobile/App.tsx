@@ -1,11 +1,13 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
-import { Platform } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import './global.css';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { ThemeProvider } from './src/theme/ThemeProvider';
+import { loadSession } from './src/services/session';
+import type { AuthResponse } from './src/services/api';
 
 function configureProgressiveWebApp() {
   if (Platform.OS !== 'web' || typeof document === 'undefined') {
@@ -49,16 +51,27 @@ function configureProgressiveWebApp() {
 }
 
 export default function App() {
+  const [session, setSession] = useState<AuthResponse | null>(null);
+  const [sessionLoaded, setSessionLoaded] = useState(false);
+
   useEffect(() => {
     configureProgressiveWebApp();
+    loadSession()
+      .then(setSession)
+      .catch(() => setSession(null))
+      .finally(() => setSessionLoaded(true));
   }, []);
+
+  if (!sessionLoaded) {
+    return <View className="flex-1 items-center justify-center bg-background"><ActivityIndicator color="#D4A64A" size="large" /></View>;
+  }
 
   return (
     <ThemeProvider>
       <SafeAreaProvider>
         <NavigationContainer>
           <StatusBar style="auto" />
-          <AppNavigator />
+          <AppNavigator session={session} />
         </NavigationContainer>
       </SafeAreaProvider>
     </ThemeProvider>

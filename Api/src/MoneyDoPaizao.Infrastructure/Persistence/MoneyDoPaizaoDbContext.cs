@@ -44,12 +44,14 @@ public sealed class MoneyDoPaizaoDbContext(DbContextOptions<MoneyDoPaizaoDbConte
         user.HasKey(item => item.Id);
         user.Property(item => item.Name).HasMaxLength(160).IsRequired();
         user.Property(item => item.Email).HasMaxLength(180).IsRequired();
-        user.Property(item => item.Cpf).HasMaxLength(11).IsRequired();
+        user.Property(item => item.Cpf).HasMaxLength(11);
+        user.Property(item => item.Phone).HasMaxLength(11);
         user.Property(item => item.BirthDate).HasColumnType("timestamp without time zone").IsRequired();
         user.Property(item => item.PasswordHash).IsRequired();
         user.Property(item => item.Role).HasConversion<string>().HasMaxLength(20).IsRequired();
         user.HasIndex(item => item.Email).IsUnique();
         user.HasIndex(item => item.Cpf).IsUnique();
+        user.HasIndex(item => item.Phone).IsUnique();
         user.HasOne(item => item.Account).WithMany().HasForeignKey(item => item.AccountId).OnDelete(DeleteBehavior.Restrict);
 
         var customer = modelBuilder.Entity<Customer>();

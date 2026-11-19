@@ -48,6 +48,7 @@ public static class DatabaseSeeder
             configuration["AdminSeed:Name"] ?? "Administrador",
             email,
             configuration["AdminSeed:Cpf"] ?? "00000000000",
+            null,
             DateTime.TryParse(configuration["AdminSeed:BirthDate"], out var birthDate)
                 ? birthDate
                 : new DateTime(1990, 1, 1),
@@ -147,7 +148,15 @@ public static class DatabaseSeeder
             END $$;
 
             ALTER TABLE public.users ADD COLUMN IF NOT EXISTS account_id uuid;
+            ALTER TABLE public.users ADD COLUMN IF NOT EXISTS phone varchar(11);
             ALTER TABLE public.users ADD COLUMN IF NOT EXISTS created_at_utc timestamp without time zone NOT NULL DEFAULT (timezone('utc', now()));
+            DO $$
+            BEGIN
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'cpf') THEN
+                    ALTER TABLE public.users ALTER COLUMN cpf DROP NOT NULL;
+                END IF;
+            END $$;
+            CREATE UNIQUE INDEX IF NOT EXISTS users_phone_unique ON public.users (phone) WHERE phone IS NOT NULL;
             ALTER TABLE public.accounts ADD COLUMN IF NOT EXISTS use_custom_theme boolean NOT NULL DEFAULT false;
             ALTER TABLE public.accounts ADD COLUMN IF NOT EXISTS primary_color varchar(7) NOT NULL DEFAULT '#071629';
             ALTER TABLE public.accounts ADD COLUMN IF NOT EXISTS secondary_color varchar(7) NOT NULL DEFAULT '#D4A64A';

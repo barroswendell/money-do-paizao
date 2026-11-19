@@ -7,6 +7,7 @@ import { Text } from '../components/ui/text';
 import { PaizaoLogo } from '../components/brand/PaizaoLogo';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { activateModule, type ProductModule } from '../services/api';
+import { clearSession, saveSession } from '../services/session';
 import { useTheme } from '../theme/ThemeProvider';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ModuleSelection'>;
@@ -31,6 +32,7 @@ export function ModuleSelectionScreen({ navigation, route }: Props) {
       setError('');
       setLoadingModule(module);
       const response = await activateModule(token, module);
+      await saveSession(response);
       const availableModules = response.modules?.length ? response.modules : [...modules, module];
       if (module === 'Loans') navigation.replace('Dashboard', { userName, role, token: response.token, module, modules: availableModules });
       if (module === 'Parties') navigation.replace('PartyDashboard', { userName, role, token: response.token, modules: availableModules });
@@ -67,7 +69,7 @@ export function ModuleSelectionScreen({ navigation, route }: Props) {
               );
             })}
           </View>
-          <Pressable className="mt-8 flex-row items-center justify-center" onPress={() => { resetTheme(); navigation.replace('Login'); }}><LogOut color={colors.primary} size={17} /><Text className="ml-2 text-sm font-extrabold text-primary">Sair</Text></Pressable>
+          <Pressable className="mt-8 flex-row items-center justify-center" onPress={() => { void clearSession(); resetTheme(); navigation.replace('Login'); }}><LogOut color={colors.primary} size={17} /><Text className="ml-2 text-sm font-extrabold text-primary">Sair</Text></Pressable>
         </View>
       </ScrollView>
     </View>
