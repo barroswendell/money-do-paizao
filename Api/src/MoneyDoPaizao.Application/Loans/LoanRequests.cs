@@ -9,6 +9,13 @@ public sealed record LoanCreateRequest(
 
 public sealed record LoanPaymentRequest(string Type);
 
+public sealed record LoanPaymentResponse(
+    string Type,
+    decimal Amount,
+    decimal InterestAmount,
+    decimal PrincipalAmount,
+    DateTime PaidAtUtc);
+
 public sealed record LoanResponse(
     Guid Id,
     Guid CustomerId,
@@ -22,4 +29,5 @@ public sealed record LoanResponse(
     decimal InterestDue,
     decimal TotalDue,
     string Status,
-    decimal PaidInterest);
+    decimal PaidInterest,
+    IReadOnlyList<LoanPaymentResponse> Payments);

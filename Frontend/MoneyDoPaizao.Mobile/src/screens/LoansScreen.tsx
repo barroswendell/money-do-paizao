@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
-import { ArrowLeft, CalendarClock, CheckCircle2, ChevronDown, HandCoins, Percent, Plus, WalletCards } from 'lucide-react-native';
+import { ArrowLeft, CalendarClock, CheckCircle2, ChevronDown, ChevronUp, HandCoins, History, Percent, Plus, WalletCards } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Button, ButtonText } from '../components/ui/button';
 import { Card } from '../components/ui/card';
@@ -31,6 +31,7 @@ export function LoansScreen({ navigation, route }: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [actionLoanId, setActionLoanId] = useState('');
+  const [expandedLoanId, setExpandedLoanId] = useState('');
 
   async function loadData() {
     try {
@@ -188,17 +189,24 @@ export function LoansScreen({ navigation, route }: Props) {
 
           {!loading ? loans.map((loan) => {
             const paid = loan.status === 'Paid';
+            const payments = loan.payments ?? [];
+            const fullPayment = payments.find((payment) => payment.type === 'Full');
             return (
               <Card className="mb-3 p-4" key={loan.id}>
-                <View className="flex-row items-start justify-between">
-                  <View className="flex-1 pr-3">
-                    <Text className="text-[16px] font-extrabold text-navy">{loan.customerName}</Text>
-                    <Text className="mt-1 text-[12px] text-muted">Vencimento: dia {loan.dueDay} · {loan.daysLate > 0 ? `${loan.daysLate} dias em atraso` : 'em dia'}</Text>
+                <Pressable onPress={() => setExpandedLoanId((current) => current === loan.id ? '' : loan.id)}>
+                  <View className="flex-row items-start justify-between">
+                    <View className="flex-1 pr-3">
+                      <Text className="text-[16px] font-extrabold text-navy">{loan.customerName}</Text>
+                      <Text className="mt-1 text-[12px] text-muted">Vencimento: dia {loan.dueDay} · {loan.daysLate > 0 ? `${loan.daysLate} dias em atraso` : 'em dia'}</Text>
+                    </View>
+                    <View className="flex-row items-center gap-2">
+                      <View className={`rounded-full px-2.5 py-1 ${paid ? 'bg-navy' : loan.daysLate > 0 ? 'bg-destructive/10' : 'bg-gold/20'}`}>
+                        <Text className={`text-[11px] font-bold ${paid ? 'text-white' : loan.daysLate > 0 ? 'text-destructive' : 'text-navy'}`}>{paid ? 'Pago' : loan.daysLate > 0 ? 'Atrasado' : 'Em dia'}</Text>
+                      </View>
+                      {expandedLoanId === loan.id ? <ChevronUp color="#6D7784" size={18} /> : <ChevronDown color="#6D7784" size={18} />}
+                    </View>
                   </View>
-                  <View className={`rounded-full px-2.5 py-1 ${paid ? 'bg-navy' : loan.daysLate > 0 ? 'bg-destructive/10' : 'bg-gold/20'}`}>
-                    <Text className={`text-[11px] font-bold ${paid ? 'text-white' : loan.daysLate > 0 ? 'text-destructive' : 'text-navy'}`}>{paid ? 'Pago' : loan.daysLate > 0 ? 'Atrasado' : 'Em dia'}</Text>
-                  </View>
-                </View>
+                </Pressable>
 
                 <View className="my-4 flex-row gap-3 border-y border-border py-3">
                   <View className="flex-1">
@@ -214,6 +222,29 @@ export function LoansScreen({ navigation, route }: Props) {
                     <Text className="mt-1 text-[15px] font-extrabold text-navy">{formatCurrency(loan.totalDue)}</Text>
                   </View>
                 </View>
+
+                {expandedLoanId === loan.id ? (
+                  <View className="mb-4 rounded-xl border border-border bg-background p-4">
+                    <View className="mb-3 flex-row items-center">
+                      <History color="#D4A64A" size={18} strokeWidth={1.8} />
+                      <Text className="ml-2 text-[14px] font-extrabold text-navy">Histórico do empréstimo</Text>
+                    </View>
+                    {paid && fullPayment ? <Text className="mb-3 text-[13px] font-bold text-[#1A7F5A]">Empréstimo finalizado em {formatDate(fullPayment.paidAtUtc)}</Text> : null}
+                    {payments.length === 0 ? <Text className="text-[12px] text-muted">Nenhum pagamento registrado ainda.</Text> : null}
+                    {payments.map((payment) => (
+                      <View className="mb-3 border-b border-border pb-3 last:mb-0 last:border-b-0 last:pb-0" key={`${payment.type}-${payment.paidAtUtc}`}>
+                        <View className="flex-row items-start justify-between">
+                          <View className="flex-1 pr-3">
+                            <Text className="text-[13px] font-bold text-navy">{payment.type === 'Full' ? 'Empréstimo finalizado' : 'Pagamento somente de juros'}</Text>
+                            <Text className="mt-1 text-[12px] text-muted">{formatDate(payment.paidAtUtc)}</Text>
+                          </View>
+                          <Text className="text-[13px] font-extrabold text-navy">{formatCurrency(payment.amount)}</Text>
+                        </View>
+                        <Text className="mt-2 text-[11px] text-muted">Juros: {formatCurrency(payment.interestAmount)} · Principal: {formatCurrency(payment.principalAmount)}</Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
 
                 {!paid ? (
                   <View className="flex-row gap-3">

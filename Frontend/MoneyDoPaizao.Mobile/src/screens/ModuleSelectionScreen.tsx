@@ -31,10 +31,11 @@ export function ModuleSelectionScreen({ navigation, route }: Props) {
       setError('');
       setLoadingModule(module);
       const response = await activateModule(token, module);
-      if (module === 'Loans') navigation.replace('Dashboard', { userName, role, token: response.token, module });
-      if (module === 'Parties') navigation.replace('PartyDashboard', { userName, token: response.token });
-      if (module === 'PersonalFinance') navigation.replace('Finance', { token: response.token });
-      if (module === 'Sales') navigation.replace('SalesDashboard', { userName, token: response.token });
+      const availableModules = response.modules?.length ? response.modules : [...modules, module];
+      if (module === 'Loans') navigation.replace('Dashboard', { userName, role, token: response.token, module, modules: availableModules });
+      if (module === 'Parties') navigation.replace('PartyDashboard', { userName, role, token: response.token, modules: availableModules });
+      if (module === 'PersonalFinance') navigation.replace('Finance', { userName, role, token: response.token, modules: availableModules });
+      if (module === 'Sales') navigation.replace('SalesDashboard', { userName, role, token: response.token, modules: availableModules });
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : 'Não foi possível abrir este módulo.');
     } finally {

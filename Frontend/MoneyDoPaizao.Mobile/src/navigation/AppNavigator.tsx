@@ -29,14 +29,15 @@ export type RootStackParamList = {
     role: 'Admin' | 'Usuario';
     token: string;
     module: ProductModule;
+    modules: ProductModule[];
   };
   Customers: { token: string };
   Loans: { token: string; openCreate?: boolean };
-  Finance: { token: string };
-  PartyDashboard: { userName: string; token: string };
+  Finance: { userName: string; role: 'Admin' | 'Usuario'; token: string; modules: ProductModule[] };
+  PartyDashboard: { userName: string; role: 'Admin' | 'Usuario'; token: string; modules: ProductModule[] };
   PartyEvents: { token: string };
   PartyThemes: { token: string };
-  SalesDashboard: { userName: string; token: string };
+  SalesDashboard: { userName: string; role: 'Admin' | 'Usuario'; token: string; modules: ProductModule[] };
   Products: { token: string };
   Sales: { token: string };
   Settings: { token: string };

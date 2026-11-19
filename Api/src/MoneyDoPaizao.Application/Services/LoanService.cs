@@ -104,7 +104,16 @@ public sealed class LoanService(
             calculation.InterestDue,
             calculation.TotalDue,
             loan.Status.ToString(),
-            loan.Payments.Sum(payment => payment.InterestAmount));
+            loan.Payments.Sum(payment => payment.InterestAmount),
+            loan.Payments
+                .OrderByDescending(payment => payment.PaidAtUtc)
+                .Select(payment => new LoanPaymentResponse(
+                    payment.Type.ToString(),
+                    payment.Amount,
+                    payment.InterestAmount,
+                    payment.PrincipalAmount,
+                    payment.PaidAtUtc))
+                .ToList());
     }
 }
 

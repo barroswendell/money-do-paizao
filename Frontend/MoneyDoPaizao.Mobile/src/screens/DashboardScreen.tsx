@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import {
   ArrowUpRight,
+  ArrowLeftRight,
   Bell,
   HandCoins,
   LayoutDashboard,
@@ -38,8 +39,7 @@ export function DashboardScreen({ navigation, route }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const { userName, role } = route.params;
-  const { token } = route.params;
+  const { userName, role, token, modules } = route.params;
   const { colors, resetTheme } = useTheme();
 
   useEffect(() => {
@@ -144,7 +144,7 @@ export function DashboardScreen({ navigation, route }: Props) {
                 <Plus color="#071629" size={18} strokeWidth={2} />
                 <ButtonText>Empréstimo</ButtonText>
               </Button>
-              <Button className="flex-1 flex-row gap-2" onPress={() => navigation.navigate('Finance', { token })} variant="outline">
+              <Button className="flex-1 flex-row gap-2" onPress={() => navigation.navigate('Finance', { userName, role, token, modules })} variant="outline">
                 <ReceiptText color="#071629" size={18} strokeWidth={1.8} />
                 <ButtonText variant="outline">Finança</ButtonText>
               </Button>
@@ -184,7 +184,7 @@ export function DashboardScreen({ navigation, route }: Props) {
                       setMenuOpen(false);
                       if (item.target === 'Customers') navigation.navigate('Customers', { token });
                       if (item.target === 'Loans') navigation.navigate('Loans', { token });
-                      if (item.target === 'Finance') navigation.navigate('Finance', { token });
+                      if (item.target === 'Finance') navigation.navigate('Finance', { userName, role, token, modules });
                       if (item.target === 'Settings') navigation.navigate('Settings', { token });
                     }}
                   >
@@ -194,6 +194,17 @@ export function DashboardScreen({ navigation, route }: Props) {
                 );
               })}
             </View>
+
+            <Pressable
+              className="mt-5 flex-row items-center rounded-xl border border-gold/40 px-3 py-3"
+              onPress={() => {
+                setMenuOpen(false);
+                navigation.replace('ModuleSelection', { userName, role, token, modules });
+              }}
+            >
+              <ArrowLeftRight color="#D4A64A" size={19} strokeWidth={1.8} />
+              <Text className="ml-3 text-[14px] font-semibold text-gold">Trocar de módulo</Text>
+            </Pressable>
 
             <View className="mt-auto border-t border-white/10 pt-5">
               <Pressable className="flex-row items-center px-3 py-3" onPress={() => { resetTheme(); navigation.replace('Login'); }}>

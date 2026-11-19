@@ -40,6 +40,15 @@ export type Loan = {
   totalDue: number;
   status: 'Active' | 'Paid';
   paidInterest: number;
+  payments: LoanPayment[];
+};
+
+export type LoanPayment = {
+  type: 'Full' | 'InterestOnly';
+  amount: number;
+  interestAmount: number;
+  principalAmount: number;
+  paidAtUtc: string;
 };
 
 export type DashboardSummary = {

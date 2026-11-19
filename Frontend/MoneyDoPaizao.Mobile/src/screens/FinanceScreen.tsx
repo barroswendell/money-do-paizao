@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
-import { ArrowDownRight, ArrowLeft, ArrowUpRight, CircleDollarSign, Plus, WalletCards } from 'lucide-react-native';
+import { ArrowDownRight, ArrowLeft, ArrowLeftRight, ArrowUpRight, CircleDollarSign, LogOut, Menu, Plus, Settings, WalletCards, X } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Button, ButtonText } from '../components/ui/button';
 import { Card } from '../components/ui/card';
@@ -9,6 +9,7 @@ import { Text } from '../components/ui/text';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { createFinanceEntry, getFinanceEntries, getFinanceSummary, type FinanceEntry, type FinanceEntryType, type PersonalFinanceSummary } from '../services/api';
 import { formatCurrency, formatDate } from '../lib/format';
+import { useTheme } from '../theme/ThemeProvider';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Finance'>;
 
@@ -17,7 +18,7 @@ function parseNumber(value: string) {
 }
 
 export function FinanceScreen({ navigation, route }: Props) {
-  const { token } = route.params;
+  const { token, userName, role, modules } = route.params;
   const [summary, setSummary] = useState<PersonalFinanceSummary | null>(null);
   const [entries, setEntries] = useState<FinanceEntry[]>([]);
   const [formOpen, setFormOpen] = useState(false);
@@ -28,6 +29,8 @@ export function FinanceScreen({ navigation, route }: Props) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const { colors, resetTheme } = useTheme();
 
   async function loadData() {
     try {
@@ -79,9 +82,14 @@ export function FinanceScreen({ navigation, route }: Props) {
             <Text className="text-[12px] text-muted">Seu mês em uma visão simples.</Text>
           </View>
         </View>
-        <Pressable accessibilityLabel="Novo lançamento" className="h-10 w-10 items-center justify-center rounded-xl bg-navy" onPress={() => setFormOpen((current) => !current)}>
-          <Plus color="#D4A64A" size={20} strokeWidth={2} />
-        </Pressable>
+        <View className="flex-row items-center gap-2">
+          <Pressable accessibilityLabel="Novo lançamento" className="h-10 w-10 items-center justify-center rounded-xl bg-navy" onPress={() => setFormOpen((current) => !current)}>
+            <Plus color="#D4A64A" size={20} strokeWidth={2} />
+          </Pressable>
+          <Pressable accessibilityLabel="Abrir menu" className="h-10 w-10 items-center justify-center rounded-xl bg-navy" onPress={() => setMenuOpen(true)}>
+            <Menu color={colors.secondary} size={20} strokeWidth={2} />
+          </Pressable>
+        </View>
       </View>
 
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled">
@@ -160,6 +168,24 @@ export function FinanceScreen({ navigation, route }: Props) {
           ))}
         </View>
       </ScrollView>
+
+      {menuOpen ? (
+        <View className="absolute inset-0 z-20 flex-row">
+          <Pressable className="flex-1 bg-black/40" onPress={() => setMenuOpen(false)} />
+          <View className="w-[300px] flex-1 bg-navy px-6 pb-8 pt-12">
+            <View className="flex-row items-center justify-between">
+              <View><Text className="text-[17px] font-extrabold text-white">Se Organiza</Text><Text className="text-[11px] text-white/60">Finanças pessoais</Text></View>
+              <Pressable accessibilityLabel="Fechar menu" onPress={() => setMenuOpen(false)}><X color="#FFF" size={22} /></Pressable>
+            </View>
+            <View className="mt-10 gap-2">
+              <Pressable className="flex-row items-center rounded-xl bg-white/10 px-3 py-3" onPress={() => setMenuOpen(false)}><WalletCards color={colors.secondary} size={19} /><Text className="ml-3 text-[14px] font-semibold text-gold">Visão geral</Text></Pressable>
+              <Pressable className="flex-row items-center rounded-xl px-3 py-3" onPress={() => { setMenuOpen(false); navigation.navigate('Settings', { token }); }}><Settings color="#FFF" size={19} /><Text className="ml-3 text-[14px] font-semibold text-white/80">Configurações</Text></Pressable>
+            </View>
+            <Pressable className="mt-5 flex-row items-center rounded-xl border border-gold/40 px-3 py-3" onPress={() => { setMenuOpen(false); navigation.replace('ModuleSelection', { userName, role, token, modules }); }}><ArrowLeftRight color="#D4A64A" size={19} /><Text className="ml-3 text-[14px] font-semibold text-gold">Trocar de módulo</Text></Pressable>
+            <View className="mt-auto border-t border-white/10 pt-5"><Pressable className="flex-row items-center px-3 py-3" onPress={() => { resetTheme(); navigation.replace('Login'); }}><LogOut color="#FFF" size={19} /><Text className="ml-3 text-[14px] font-semibold text-white/80">Sair</Text></Pressable></View>
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 }
