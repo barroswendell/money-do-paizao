@@ -135,11 +135,32 @@ export type Sale = {
   installmentCount?: number | null;
   installmentAmount?: number | null;
   lastInstallmentAmount?: number | null;
+  scheduledInstallmentCount: number;
+  paidInstallmentCount: number;
+  receivedAmount: number;
+  isOverdue: boolean;
   paymentType: 'Cash' | 'Installment';
   status: 'Pending' | 'Paid';
   dueDate?: string | null;
   soldAtUtc: string;
   paidAtUtc?: string | null;
+};
+
+export type SaleInstallment = {
+  number: number;
+  amount: number;
+  dueDate?: string | null;
+  isPaid: boolean;
+  isOverdue: boolean;
+  paidAtUtc?: string | null;
+  paidByUserName?: string | null;
+};
+
+export type SaleInstallmentPage = {
+  sale: Sale;
+  page: number;
+  totalPages: number;
+  installments: SaleInstallment[];
 };
 
 export type SalesDashboard = {
@@ -414,6 +435,10 @@ export function createSale(token: string, payload: {
   });
 }
 
-export function markSaleAsPaid(token: string, saleId: string) {
-  return request<Sale>(`/sales/${saleId}/pay`, { method: 'POST', headers: authHeaders(token) });
+export function getSaleInstallments(token: string, saleId: string, page: number) {
+  return request<SaleInstallmentPage>(`/sales/${saleId}/installments?page=${page}`, { method: 'GET', headers: authHeaders(token) });
+}
+
+export function paySaleInstallment(token: string, saleId: string, number: number) {
+  return request<SaleInstallmentPage>(`/sales/${saleId}/installments/${number}/pay`, { method: 'POST', headers: authHeaders(token) });
 }

@@ -18,6 +18,7 @@ public sealed class MoneyDoPaizaoDbContext(DbContextOptions<MoneyDoPaizaoDbConte
     public DbSet<FinanceEntry> FinanceEntries => Set<FinanceEntry>();
     public DbSet<Product> Products => Set<Product>();
     public DbSet<Sale> Sales => Set<Sale>();
+    public DbSet<SaleInstallmentPayment> SaleInstallmentPayments => Set<SaleInstallmentPayment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -152,5 +153,12 @@ public sealed class MoneyDoPaizaoDbContext(DbContextOptions<MoneyDoPaizaoDbConte
         sale.Property(item => item.DueDate).HasColumnType("timestamp without time zone");
         sale.HasOne(item => item.Customer).WithMany().HasForeignKey(item => item.CustomerId).OnDelete(DeleteBehavior.Restrict);
         sale.HasOne(item => item.Product).WithMany().HasForeignKey(item => item.ProductId).OnDelete(DeleteBehavior.Restrict);
+
+        var installmentPayment = modelBuilder.Entity<SaleInstallmentPayment>();
+        installmentPayment.ToTable("sale_installment_payments");
+        installmentPayment.HasKey(item => new { item.SaleId, item.Number });
+        installmentPayment.Property(item => item.Amount).HasPrecision(18, 2).IsRequired();
+        installmentPayment.Property(item => item.PaidByUserName).HasMaxLength(160).IsRequired();
+        sale.HasMany(item => item.InstallmentPayments).WithOne().HasForeignKey(item => item.SaleId).OnDelete(DeleteBehavior.Cascade);
     }
 }

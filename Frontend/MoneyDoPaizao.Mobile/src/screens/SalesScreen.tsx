@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
-import { ArrowLeft, Check, CheckCircle2, ChevronDown, CircleDollarSign, Plus, ShoppingBag } from 'lucide-react-native';
+import { ArrowLeft, Check, ChevronDown, ChevronRight, CircleDollarSign, Plus, ShoppingBag } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { DatePickerField } from '../components/DatePickerField';
+import { SaleDetailsModal } from '../components/SaleDetailsModal';
 import { Button, ButtonText } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { Input } from '../components/ui/input';
@@ -10,10 +11,18 @@ import { Text } from '../components/ui/text';
 import { formatCurrency, formatDate } from '../lib/format';
 import { calculateInstallments, parseInstallmentCount, parseMoneyCents } from '../lib/saleAmounts';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { createSale, getCustomers, getProducts, getSales, markSaleAsPaid, type Customer, type Product, type Sale } from '../services/api';
+import { createSale, getCustomers, getProducts, getSales, type Customer, type Product, type Sale } from '../services/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Sales'>;
 type Choice = { id: string; name: string };
+type SaleFilter = 'all' | 'paid' | 'overdue';
+
+const saleFilters: { value: SaleFilter; label: string }[] = [
+  { value: 'all', label: 'Todas' },
+  { value: 'paid', label: 'Quitadas' },
+  { value: 'overdue', label: 'Vencidas' },
+];
+const allProducts = { id: '', name: 'Todos os produtos' };
 
 function SalePicker<T extends Choice>({ label, placeholder, emptyLabel, options, selected, open, onToggle, onSelect }: {
   label: string;
@@ -70,7 +79,10 @@ export function SalesScreen({ navigation, route }: Props) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [payingId, setPayingId] = useState('');
+  const [saleFilter, setSaleFilter] = useState<SaleFilter>('all');
+  const [filterProduct, setFilterProduct] = useState<Choice>(allProducts);
+  const [filterProductOpen, setFilterProductOpen] = useState(false);
+  const [detailSaleId, setDetailSaleId] = useState<string | null>(null);
 
   const isInstallment = paymentType === 'Installment';
   const unitPriceCents = parseMoneyCents(unitPrice);
@@ -83,6 +95,13 @@ export function SalesScreen({ navigation, route }: Props) {
     ? calculateInstallments(unitPriceCents, downPaymentCents, installmentCount, manualInstallmentCents)
     : null;
   const totalCents = isInstallment ? quote?.total : unitPriceCents;
+  const detailSale = sales.find((sale) => sale.id === detailSaleId);
+  const visibleSales = sales.filter((sale) =>
+    (!filterProduct.id || filterProduct.id === sale.productId) &&
+    (saleFilter === 'all' || (saleFilter === 'paid' ? sale.status === 'Paid' : sale.isOverdue)));
+  const updateSale = useCallback((updated: Sale) => {
+    setSales((current) => current.map((sale) => sale.id === updated.id ? updated : sale));
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -155,19 +174,6 @@ export function SalesScreen({ navigation, route }: Props) {
       setError(exception instanceof Error ? exception.message : 'Não foi possível registrar a venda.');
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function handlePay(id: string) {
-    setError('');
-    try {
-      setPayingId(id);
-      const paidSale = await markSaleAsPaid(token, id);
-      setSales((current) => current.map((sale) => sale.id === id ? paidSale : sale));
-    } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível marcar a venda como paga.');
-    } finally {
-      setPayingId('');
     }
   }
 
@@ -267,50 +273,60 @@ export function SalesScreen({ navigation, route }: Props) {
             <ShoppingBag color="#D4A64A" size={19} />
             <Text className="ml-2 text-[16px] font-extrabold text-navy">Vendas registradas</Text>
           </View>
+          <View className="mb-3 flex-row flex-wrap gap-2">
+            {saleFilters.map(({ value, label }) => (
+              <Pressable accessibilityRole="radio" accessibilityState={{ checked: saleFilter === value }} className={`rounded-xl border px-4 py-2.5 ${saleFilter === value ? 'border-navy bg-gold/20' : 'border-border bg-surface'}`} key={value} onPress={() => setSaleFilter(value)}>
+                <Text className="text-[13px] font-bold text-navy">{label}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <SalePicker label="Filtrar por produto" placeholder={allProducts.name} emptyLabel="Nenhum produto cadastrado." options={[allProducts, ...products]} selected={filterProduct} open={filterProductOpen} onToggle={() => setFilterProductOpen((current) => !current)} onSelect={(product) => { setFilterProduct(product); setFilterProductOpen(false); }} />
           {!formOpen && error ? <Text className="mb-3 text-[13px] text-destructive">{error}</Text> : null}
           {loading ? <ActivityIndicator color="#D4A64A" size="large" /> : null}
-          {!sales.length && !loading && !error ? (
+          {!visibleSales.length && !loading && !error ? (
             <Card className="items-center p-8">
               <ShoppingBag color="#6D7784" size={28} />
-              <Text className="mt-3 text-[15px] font-bold text-navy">Nenhuma venda ainda</Text>
-              <Text className="mt-1 text-center text-[13px] text-muted">Use o botão + para registrar a primeira.</Text>
+              <Text className="mt-3 text-center text-[15px] font-bold text-navy">{sales.length ? 'Nenhuma venda para esses filtros' : 'Nenhuma venda ainda'}</Text>
+              {!sales.length ? <Text className="mt-1 text-center text-[13px] text-muted">Use o botão + para registrar a primeira.</Text> : null}
             </Card>
           ) : null}
-          {sales.map((sale) => (
-            <Card className="mb-3 p-4" key={sale.id}>
-              <View className="flex-row items-start justify-between">
-                <View className="flex-1 pr-3">
-                  <Text className="text-[16px] font-extrabold text-navy">{sale.productName}</Text>
-                  <Text className="mt-1 text-[12px] text-muted">{sale.customerName} · {sale.paymentType === 'Cash' ? 'à vista' : 'parcelado'}</Text>
+          {visibleSales.map((sale) => (
+            <Pressable accessibilityLabel={`Detalhes da venda de ${sale.productName} para ${sale.customerName}`} accessibilityRole="button" className="mb-3" key={sale.id} onPress={() => setDetailSaleId(sale.id)}>
+              <Card className="p-4">
+                <View className="flex-row items-start justify-between">
+                  <View className="flex-1 pr-3">
+                    <Text className="text-[16px] font-extrabold text-navy">{sale.productName}</Text>
+                    <Text className="mt-1 text-[12px] text-muted">{sale.customerName} · {sale.paymentType === 'Cash' ? 'à vista' : 'parcelado'}</Text>
+                  </View>
+                  <View className="flex-row items-center gap-2">
+                    <View className={`rounded-full px-2.5 py-1 ${sale.isOverdue ? 'bg-destructive/10' : 'bg-gold/20'}`}>
+                      <Text className={`text-[11px] font-bold ${sale.isOverdue ? 'text-destructive' : 'text-navy'}`}>{sale.status === 'Paid' ? 'Quitada' : sale.isOverdue ? 'Vencida' : 'Pendente'}</Text>
+                    </View>
+                    <ChevronRight color="#6D7784" size={17} />
+                  </View>
                 </View>
-                <View className={`rounded-full px-2.5 py-1 ${sale.status === 'Paid' ? 'bg-gold/20' : 'bg-destructive/10'}`}>
-                  <Text className={`text-[11px] font-bold ${sale.status === 'Paid' ? 'text-navy' : 'text-destructive'}`}>{sale.status === 'Paid' ? 'Pago' : 'Pendente'}</Text>
+                <View className="mt-3 gap-1.5 border-t border-border pt-3">
+                  <View className="flex-row justify-between">
+                    <Text className="text-[12px] text-muted">{formatDate(sale.soldAtUtc)}</Text>
+                    <Text className="text-[16px] font-extrabold text-navy">{formatCurrency(sale.amount)}</Text>
+                  </View>
+                  {sale.installmentCount && sale.installmentAmount != null ? (
+                    <>
+                      {sale.unitPrice !== sale.amount ? <Text className="text-[12px] text-muted">Valor do produto {formatCurrency(sale.unitPrice)}</Text> : null}
+                      {sale.downPaymentAmount > 0 ? <Text className="text-[12px] text-muted">Entrada de {formatCurrency(sale.downPaymentAmount)}</Text> : null}
+                      <Text className="text-[12px] text-muted">{formatInstallments(sale.installmentCount, sale.installmentAmount, sale.lastInstallmentAmount)}</Text>
+                    </>
+                  ) : null}
+                  {sale.scheduledInstallmentCount > 0 ? (
+                    <Text className="text-[12px] font-bold text-navy">{sale.paidInstallmentCount}/{sale.scheduledInstallmentCount} parcelas pagas</Text>
+                  ) : null}
                 </View>
-              </View>
-              <View className="my-3 gap-1.5 border-y border-border py-3">
-                <View className="flex-row justify-between">
-                  <Text className="text-[12px] text-muted">{formatDate(sale.soldAtUtc)}</Text>
-                  <Text className="text-[16px] font-extrabold text-navy">{formatCurrency(sale.amount)}</Text>
-                </View>
-                {sale.installmentCount && sale.installmentAmount != null ? (
-                  <>
-                    {sale.unitPrice !== sale.amount ? <Text className="text-[12px] text-muted">Valor do produto {formatCurrency(sale.unitPrice)}</Text> : null}
-                    {sale.downPaymentAmount > 0 ? <Text className="text-[12px] text-muted">Entrada de {formatCurrency(sale.downPaymentAmount)}</Text> : null}
-                    <Text className="text-[12px] text-muted">{formatInstallments(sale.installmentCount, sale.installmentAmount, sale.lastInstallmentAmount)}</Text>
-                  </>
-                ) : null}
-                {sale.dueDate ? <Text className="text-[12px] text-muted">Vencimento em {formatDate(sale.dueDate)}</Text> : null}
-              </View>
-              {sale.status === 'Pending' ? (
-                <Button accessibilityRole="button" className="flex-row gap-2" disabled={!!payingId} onPress={() => handlePay(sale.id)}>
-                  <CheckCircle2 color="#071629" size={17} />
-                  <ButtonText>{payingId === sale.id ? 'Salvando...' : 'Marcar como pago'}</ButtonText>
-                </Button>
-              ) : null}
-            </Card>
+              </Card>
+            </Pressable>
           ))}
         </View>
       </ScrollView>
+      {detailSale ? <SaleDetailsModal key={detailSale.id} token={token} sale={detailSale} onSaleUpdated={updateSale} onClose={() => setDetailSaleId(null)} /> : null}
     </View>
   );
 }

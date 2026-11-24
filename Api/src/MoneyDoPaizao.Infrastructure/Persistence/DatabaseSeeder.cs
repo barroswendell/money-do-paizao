@@ -238,6 +238,16 @@ public static class DatabaseSeeder
             ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS installment_amount numeric(18,2);
             ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS last_installment_amount numeric(18,2);
 
+            CREATE TABLE IF NOT EXISTS public.sale_installment_payments (
+                sale_id uuid NOT NULL REFERENCES public.sales (id) ON DELETE CASCADE,
+                number integer NOT NULL,
+                amount numeric(18,2) NOT NULL,
+                paid_by_user_id uuid NOT NULL,
+                paid_by_user_name varchar(160) NOT NULL,
+                paid_at_utc timestamp with time zone NOT NULL,
+                PRIMARY KEY (sale_id, number)
+            );
+
             INSERT INTO public.accounts (id, name, module)
             SELECT gen_random_uuid(), 'Conta de empréstimos', 'Loans'
             WHERE EXISTS (SELECT 1 FROM public.users WHERE account_id IS NULL)

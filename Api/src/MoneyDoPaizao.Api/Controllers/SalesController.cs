@@ -77,4 +77,37 @@ public sealed class SalesController(ISalesService salesService) : ControllerBase
             return BadRequest(new { message = exception.Message });
         }
     }
+
+    [HttpGet("{id:guid}/installments")]
+    public async Task<IActionResult> GetInstallments(Guid id, CancellationToken cancellationToken, [FromQuery] int page = 1)
+    {
+        if (!User.HasModule("Sales")) return Forbid();
+        try
+        {
+            var installments = await salesService.GetInstallmentsAsync(AccountId, id, page, cancellationToken);
+            return installments is null ? NotFound() : Ok(installments);
+        }
+        catch (BusinessValidationException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
+
+    [HttpPost("{id:guid}/installments/{number:int}/pay")]
+    public async Task<IActionResult> PayInstallment(Guid id, int number, CancellationToken cancellationToken)
+    {
+        var userName = User.FindFirstValue(ClaimTypes.Name);
+        if (!User.HasModule("Sales") || !Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) || string.IsNullOrWhiteSpace(userName))
+            return Forbid();
+
+        try
+        {
+            var payment = await salesService.PayInstallmentAsync(AccountId, id, number, userId, userName, cancellationToken);
+            return payment is null ? NotFound() : Ok(payment);
+        }
+        catch (BusinessValidationException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
 }

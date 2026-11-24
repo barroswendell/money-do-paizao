@@ -12,6 +12,8 @@ public sealed class SalesService(
     ICustomerRepository customerRepository) : ISalesService
 {
     private const decimal MaxSaleAmount = 9_999_999_999_999_999.99m;
+    private const int InstallmentsPerPage = 20;
+    private static readonly TimeZoneInfo SalesTimeZone = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
 
     public async Task<ProductResponse> CreateProductAsync(Guid accountId, ProductCreateRequest request, CancellationToken cancellationToken = default)
     {
@@ -45,22 +47,62 @@ public sealed class SalesService(
             : CreateInstallmentSale(accountId, request);
         await saleRepository.AddAsync(sale, cancellationToken);
         await saleRepository.SaveChangesAsync(cancellationToken);
-        return Map(sale, customer.Name, product);
+        return Map(sale, customer.Name, product, Today());
     }
 
     public async Task<IReadOnlyList<SaleResponse>> GetSalesAsync(Guid accountId, CancellationToken cancellationToken = default)
     {
-        return (await saleRepository.GetAllAsync(accountId, cancellationToken))
-            .Select(item => Map(item, item.Customer?.Name ?? "Cliente", item.Product!)).ToList();
+        var sales = await saleRepository.GetAllAsync(accountId, cancellationToken);
+        var today = Today();
+        return sales.Select(sale => Map(sale, today)).ToList();
     }
 
     public async Task<SaleResponse> MarkAsPaidAsync(Guid accountId, Guid id, CancellationToken cancellationToken = default)
     {
         var sale = await saleRepository.GetByIdAsync(accountId, id, cancellationToken)
             ?? throw new BusinessValidationException("Venda não encontrada.");
-        sale.MarkAsPaid();
-        await saleRepository.SaveChangesAsync(cancellationToken);
-        return Map(sale, sale.Customer?.Name ?? "Cliente", sale.Product!);
+        if (sale.Status != SaleStatus.Paid)
+            throw new BusinessValidationException("Registre o pagamento de cada parcela nos detalhes da venda.");
+
+        return Map(sale, Today());
+    }
+
+    public async Task<SaleInstallmentPageResponse?> GetInstallmentsAsync(Guid accountId, Guid id, int page, CancellationToken cancellationToken = default)
+    {
+        var sale = await saleRepository.GetByIdAsync(accountId, id, cancellationToken);
+        if (sale is null) return null;
+        if (sale.ScheduledInstallmentCount == 0)
+            throw new BusinessValidationException("Esta venda foi feita à vista.");
+
+        return MapInstallmentPage(sale, page);
+    }
+
+    private static SaleInstallmentPageResponse MapInstallmentPage(Sale sale, int page)
+    {
+        var totalPages = (sale.ScheduledInstallmentCount - 1) / InstallmentsPerPage + 1;
+        page = Math.Clamp(page, 1, totalPages);
+        var offset = (page - 1) * InstallmentsPerPage;
+        var payments = sale.InstallmentPayments.ToDictionary(payment => payment.Number);
+        var count = Math.Min(InstallmentsPerPage, sale.ScheduledInstallmentCount - offset);
+        var today = Today();
+        var installments = Enumerable.Range(offset + 1, count)
+            .Select(number => MapInstallment(sale, number, payments.GetValueOrDefault(number), today)).ToList();
+        return new SaleInstallmentPageResponse(Map(sale, today), page, totalPages, installments);
+    }
+
+    public async Task<SaleInstallmentPageResponse?> PayInstallmentAsync(Guid accountId, Guid id, int number, Guid userId, string userName, CancellationToken cancellationToken = default)
+    {
+        var sale = await saleRepository.RegisterInstallmentPaymentAsync(accountId, id, currentSale =>
+        {
+            if (number < 1 || number > currentSale.ScheduledInstallmentCount)
+                throw new BusinessValidationException("Parcela não encontrada nesta venda.");
+
+            var now = DateTime.UtcNow;
+            // PostgreSQL stores timestamps at microsecond precision.
+            var paidAtUtc = now.AddTicks(-(now.Ticks % TimeSpan.TicksPerMicrosecond));
+            return currentSale.PayInstallment(number, userId, userName, paidAtUtc);
+        }, cancellationToken);
+        return sale is null ? null : MapInstallmentPage(sale, (number - 1) / InstallmentsPerPage + 1);
     }
 
     public async Task<SalesDashboardResponse> GetDashboardAsync(Guid accountId, CancellationToken cancellationToken = default)
@@ -73,13 +115,13 @@ public sealed class SalesService(
             products.Count,
             sales.Count,
             sales.Sum(item => item.Amount),
-            sales.Sum(item => item.Status == SaleStatus.Paid ? item.Amount : item.DownPaymentAmount ?? 0),
-            sales.Where(item => item.Status == SaleStatus.Pending).Sum(item => item.Amount - (item.DownPaymentAmount ?? 0)));
+            sales.Sum(item => item.ReceivedAmount),
+            sales.Sum(item => item.Amount - item.ReceivedAmount));
     }
 
     private static Sale CreateInstallmentSale(Guid accountId, SaleCreateRequest request)
     {
-        if (request.DueDate is { } dueDate && dueDate.Date < DateTime.UtcNow.Date)
+        if (request.DueDate is { } dueDate && DateOnly.FromDateTime(dueDate) < Today())
             throw new BusinessValidationException("O vencimento da venda não pode estar no passado.");
         if (request.InstallmentCount is not > 0)
             throw new BusinessValidationException("Informe uma quantidade de parcelas maior que zero.");
@@ -107,7 +149,33 @@ public sealed class SalesService(
 
     private static ProductResponse Map(Product product) => new(product.Id, product.Name, product.Brand, product.Price, product.CreatedAtUtc);
 
-    private static SaleResponse Map(Sale sale, string customerName, Product product) => new(
+    private static DateOnly Today() => DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, SalesTimeZone));
+
+    private static bool IsOverdue(Sale sale, DateOnly today)
+    {
+        if (sale.Status == SaleStatus.Paid || sale.DueDate is null || sale.ScheduledInstallmentCount == 0) return false;
+
+        var nextUnpaid = 1;
+        foreach (var payment in sale.InstallmentPayments.OrderBy(item => item.Number))
+        {
+            if (payment.Number != nextUnpaid) break;
+            nextUnpaid++;
+        }
+
+        return sale.GetInstallmentDueDate(nextUnpaid) is { } dueDate && dueDate < today;
+    }
+
+    private static SaleInstallmentResponse MapInstallment(Sale sale, int number, SaleInstallmentPayment? payment, DateOnly today)
+    {
+        var dueDate = sale.GetInstallmentDueDate(number);
+        var paid = payment is not null || sale.Status == SaleStatus.Paid;
+        return new SaleInstallmentResponse(number, payment?.Amount ?? sale.GetInstallmentAmount(number), dueDate, paid,
+            !paid && dueDate is { } date && date < today, payment?.PaidAtUtc, payment?.PaidByUserId, payment?.PaidByUserName);
+    }
+
+    private static SaleResponse Map(Sale sale, DateOnly today) => Map(sale, sale.Customer?.Name ?? "Cliente", sale.Product!, today);
+
+    private static SaleResponse Map(Sale sale, string customerName, Product product, DateOnly today) => new(
         sale.Id,
         sale.CustomerId,
         customerName,
@@ -124,7 +192,11 @@ public sealed class SalesService(
         sale.DownPaymentAmount ?? 0,
         sale.InstallmentCount,
         sale.InstallmentAmount,
-        sale.LastInstallmentAmount);
+        sale.LastInstallmentAmount,
+        sale.ScheduledInstallmentCount,
+        sale.PaidInstallmentCount,
+        sale.ReceivedAmount,
+        IsOverdue(sale, today));
 }
 
 public interface ISalesService
@@ -134,5 +206,7 @@ public interface ISalesService
     Task<SaleResponse> CreateSaleAsync(Guid accountId, SaleCreateRequest request, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<SaleResponse>> GetSalesAsync(Guid accountId, CancellationToken cancellationToken = default);
     Task<SaleResponse> MarkAsPaidAsync(Guid accountId, Guid id, CancellationToken cancellationToken = default);
+    Task<SaleInstallmentPageResponse?> GetInstallmentsAsync(Guid accountId, Guid id, int page, CancellationToken cancellationToken = default);
+    Task<SaleInstallmentPageResponse?> PayInstallmentAsync(Guid accountId, Guid id, int number, Guid userId, string userName, CancellationToken cancellationToken = default);
     Task<SalesDashboardResponse> GetDashboardAsync(Guid accountId, CancellationToken cancellationToken = default);
 }

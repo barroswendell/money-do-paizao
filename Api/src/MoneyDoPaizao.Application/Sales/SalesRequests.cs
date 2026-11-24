@@ -33,7 +33,23 @@ public sealed record SaleResponse(
     decimal DownPaymentAmount,
     int? InstallmentCount,
     decimal? InstallmentAmount,
-    decimal? LastInstallmentAmount);
+    decimal? LastInstallmentAmount,
+    int ScheduledInstallmentCount,
+    int PaidInstallmentCount,
+    decimal ReceivedAmount,
+    bool IsOverdue);
+
+public sealed record SaleInstallmentResponse(
+    int Number,
+    decimal Amount,
+    DateOnly? DueDate,
+    bool IsPaid,
+    bool IsOverdue,
+    DateTime? PaidAtUtc,
+    Guid? PaidByUserId,
+    string? PaidByUserName);
+
+public sealed record SaleInstallmentPageResponse(SaleResponse Sale, int Page, int TotalPages, IReadOnlyList<SaleInstallmentResponse> Installments);
 
 public sealed record SalesDashboardResponse(
     int TotalCustomers,
