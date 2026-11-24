@@ -32,7 +32,7 @@ export type RootStackParamList = {
     module: ProductModule;
     modules: ProductModule[];
   };
-  Customers: { token: string; showPhone?: boolean };
+  Customers: { token: string };
   Loans: { token: string; openCreate?: boolean };
   Finance: { userName: string; role: 'Admin' | 'Usuario'; token: string; modules: ProductModule[] };
   PartyDashboard: { userName: string; role: 'Admin' | 'Usuario'; token: string; modules: ProductModule[] };

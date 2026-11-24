@@ -145,6 +145,10 @@ public sealed class MoneyDoPaizaoDbContext(DbContextOptions<MoneyDoPaizaoDbConte
         sale.Property(item => item.PaymentType).HasConversion<string>().HasMaxLength(20).IsRequired();
         sale.Property(item => item.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
         sale.Property(item => item.Amount).HasPrecision(18, 2).IsRequired();
+        sale.Property(item => item.UnitPrice).HasPrecision(18, 2);
+        sale.Property(item => item.DownPaymentAmount).HasPrecision(18, 2);
+        sale.Property(item => item.InstallmentAmount).HasPrecision(18, 2);
+        sale.Property(item => item.LastInstallmentAmount).HasPrecision(18, 2);
         sale.Property(item => item.DueDate).HasColumnType("timestamp without time zone");
         sale.HasOne(item => item.Customer).WithMany().HasForeignKey(item => item.CustomerId).OnDelete(DeleteBehavior.Restrict);
         sale.HasOne(item => item.Product).WithMany().HasForeignKey(item => item.ProductId).OnDelete(DeleteBehavior.Restrict);

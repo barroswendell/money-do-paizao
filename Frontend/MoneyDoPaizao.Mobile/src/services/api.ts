@@ -120,8 +120,6 @@ export type PersonalFinanceSummary = {
 export type Product = {
   id: string;
   name: string;
-  brand: string;
-  price: number;
   createdAtUtc: string;
 };
 
@@ -131,8 +129,12 @@ export type Sale = {
   customerName: string;
   productId: string;
   productName: string;
-  productBrand: string;
   amount: number;
+  unitPrice: number;
+  downPaymentAmount: number;
+  installmentCount?: number | null;
+  installmentAmount?: number | null;
+  lastInstallmentAmount?: number | null;
   paymentType: 'Cash' | 'Installment';
   status: 'Pending' | 'Paid';
   dueDate?: string | null;
@@ -238,7 +240,7 @@ export function getCustomers(token: string) {
   });
 }
 
-export function createCustomer(token: string, payload: Omit<Customer, 'id' | 'createdAtUtc'>) {
+export function createCustomer(token: string, payload: Pick<Customer, 'name' | 'hasReferral' | 'referral'> & { phone: string }) {
   return request<Customer>('/customers', {
     method: 'POST',
     headers: authHeaders(token),
@@ -383,7 +385,7 @@ export function getProducts(token: string) {
   return request<Product[]>('/sales/products', { method: 'GET', headers: authHeaders(token) });
 }
 
-export function createProduct(token: string, payload: { name: string; brand: string; price: number }) {
+export function createProduct(token: string, payload: { name: string }) {
   return request<Product>('/sales/products', {
     method: 'POST',
     headers: authHeaders(token),
@@ -395,7 +397,16 @@ export function getSales(token: string) {
   return request<Sale[]>('/sales', { method: 'GET', headers: authHeaders(token) });
 }
 
-export function createSale(token: string, payload: { customerId: string; productId: string; paymentType: 'Cash' | 'Installment'; dueDate?: string | null }) {
+export function createSale(token: string, payload: {
+  customerId: string;
+  productId: string;
+  paymentType: Sale['paymentType'];
+  unitPrice: number;
+  downPaymentAmount?: number;
+  installmentCount?: number;
+  installmentAmount?: number;
+  dueDate?: string | null;
+}) {
   return request<Sale>('/sales', {
     method: 'POST',
     headers: authHeaders(token),

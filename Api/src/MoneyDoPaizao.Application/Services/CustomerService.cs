@@ -20,15 +20,12 @@ public sealed class CustomerService(ICustomerRepository customerRepository) : IC
             throw new BusinessValidationException("Informe a indicação do cliente.");
         }
 
-        string? phone = null;
-        if (module == ProductModule.Loans && !string.IsNullOrWhiteSpace(request.Phone))
+        var phoneInput = request.Phone?.Trim() ?? string.Empty;
+        var phone = new string(phoneInput.Where(char.IsAsciiDigit).ToArray());
+        if (phone.Length is < 10 or > 11 || phoneInput.Any(character =>
+            !char.IsAsciiDigit(character) && character is not ('(' or ')' or ' ' or '-')))
         {
-            phone = new string(request.Phone.Where(char.IsAsciiDigit).ToArray());
-            if (phone.Length is < 10 or > 11 || request.Phone.Any(character =>
-                !char.IsAsciiDigit(character) && character is not ('(' or ')' or ' ' or '-')))
-            {
-                throw new BusinessValidationException("Informe um telefone válido com DDD.");
-            }
+            throw new BusinessValidationException("Informe um telefone válido com DDD.");
         }
 
         var customer = Customer.Create(accountId, module, request.Name, request.HasReferral, request.Referral, phone);

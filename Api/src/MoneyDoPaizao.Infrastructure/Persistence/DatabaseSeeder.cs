@@ -232,6 +232,12 @@ public static class DatabaseSeeder
                 paid_at_utc timestamp without time zone
             );
 
+            ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS unit_price numeric(18,2);
+            ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS down_payment_amount numeric(18,2);
+            ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS installment_count integer;
+            ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS installment_amount numeric(18,2);
+            ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS last_installment_amount numeric(18,2);
+
             INSERT INTO public.accounts (id, name, module)
             SELECT gen_random_uuid(), 'Conta de empréstimos', 'Loans'
             WHERE EXISTS (SELECT 1 FROM public.users WHERE account_id IS NULL)

@@ -8,7 +8,7 @@ public sealed class Customer
     {
     }
 
-    private Customer(Guid accountId, ProductModule module, string name, bool hasReferral, string? referral, string? phone)
+    private Customer(Guid accountId, ProductModule module, string name, bool hasReferral, string? referral, string phone)
     {
         Id = Guid.NewGuid();
         AccountId = accountId;
@@ -30,7 +30,7 @@ public sealed class Customer
     public DateTime CreatedAtUtc { get; private set; }
     public ICollection<Loan> Loans { get; private set; } = new List<Loan>();
 
-    public static Customer Create(Guid accountId, ProductModule module, string name, bool hasReferral, string? referral, string? phone = null)
+    public static Customer Create(Guid accountId, ProductModule module, string name, bool hasReferral, string? referral, string phone)
     {
         return new Customer(accountId, module, name, hasReferral, referral, phone);
     }

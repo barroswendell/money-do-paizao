@@ -6,13 +6,11 @@ public sealed class Product
     {
     }
 
-    private Product(Guid accountId, string name, string brand, decimal price)
+    private Product(Guid accountId, string name)
     {
         Id = Guid.NewGuid();
         AccountId = accountId;
         Name = name.Trim();
-        Brand = brand.Trim();
-        Price = price;
         CreatedAtUtc = DateTime.UtcNow;
     }
 
@@ -23,5 +21,5 @@ public sealed class Product
     public decimal Price { get; private set; }
     public DateTime CreatedAtUtc { get; private set; }
 
-    public static Product Create(Guid accountId, string name, string brand, decimal price) => new(accountId, name, brand, price);
+    public static Product Create(Guid accountId, string name) => new(accountId, name);
 }
