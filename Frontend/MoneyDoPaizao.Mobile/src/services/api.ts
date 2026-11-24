@@ -1,3 +1,8 @@
+import type { DocumentPickerAsset } from 'expo-document-picker';
+import { cacheDirectory, downloadAsync } from 'expo-file-system/legacy';
+import { isAvailableAsync, shareAsync } from 'expo-sharing';
+import { Platform } from 'react-native';
+
 export type AuthResponse = {
   token: string;
   userId: string;
@@ -21,6 +26,7 @@ export type AppearanceSettings = {
 export type Customer = {
   id: string;
   name: string;
+  phone?: string | null;
   hasReferral: boolean;
   referral?: string | null;
   createdAtUtc: string;
@@ -44,12 +50,16 @@ export type Loan = {
 };
 
 export type LoanPayment = {
-  type: 'Full' | 'InterestOnly';
+  id: string;
+  type: LoanPaymentType;
   amount: number;
   interestAmount: number;
   principalAmount: number;
   paidAtUtc: string;
+  receiptName?: string | null;
 };
+
+export type LoanPaymentType = 'Full' | 'InterestOnly';
 
 export type DashboardSummary = {
   totalCustomers: number;
@@ -156,7 +166,7 @@ async function request<T>(path: string, options: RequestInit): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      ...(typeof options.body === 'string' ? { 'Content-Type': 'application/json' } : {}),
       ...(options.headers ?? {}),
     },
   });
@@ -257,12 +267,54 @@ export function createLoan(token: string, payload: {
   });
 }
 
-export function registerLoanPayment(token: string, loanId: string, type: 'Full' | 'InterestOnly') {
+export function registerLoanPayment(token: string, loanId: string, type: LoanPaymentType, requestId: string, receipt: DocumentPickerAsset | null) {
+  let body: string | FormData = JSON.stringify({ type, requestId });
+  if (receipt) {
+    const form = new FormData();
+    form.append('type', type);
+    form.append('requestId', requestId);
+    if (receipt.file) {
+      form.append('receipt', receipt.file, receipt.name);
+    } else {
+      // React Native uses the local URI to read the file when sending the form.
+      form.append('receipt', { uri: receipt.uri, name: receipt.name, type: receipt.mimeType ?? 'application/octet-stream' } as unknown as Blob);
+    }
+    body = form;
+  }
+
   return request<Loan>(`/loans/${loanId}/payments`, {
     method: 'POST',
     headers: authHeaders(token),
-    body: JSON.stringify({ type }),
+    body,
   });
+}
+
+export async function downloadLoanPaymentReceipt(token: string, loanId: string, paymentId: string, name: string) {
+  const url = `${API_URL}/loans/${loanId}/payments/${paymentId}/receipt`;
+  const headers = authHeaders(token);
+  if (Platform.OS === 'web') {
+    const response = await fetch(url, { headers, cache: 'no-store' });
+    if (!response.ok) throw new Error('Não foi possível baixar o comprovante.');
+
+    const objectUrl = URL.createObjectURL(await response.blob());
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 30_000);
+    return;
+  }
+
+  if (!cacheDirectory || !(await isAvailableAsync())) {
+    throw new Error('Este dispositivo não consegue abrir o menu para salvar o comprovante.');
+  }
+
+  const extension = name.slice(name.lastIndexOf('.'));
+  const file = await downloadAsync(url, `${cacheDirectory}comprovante-${paymentId}${extension}`, { headers, cache: false });
+  if (file.status !== 200) throw new Error('Não foi possível baixar o comprovante.');
+  await shareAsync(file.uri, { dialogTitle: name });
 }
 
 export function getPartyDashboard(token: string) {

@@ -14,7 +14,8 @@ public sealed class LoanPayment
         LoanPaymentType type,
         decimal amount,
         decimal interestAmount,
-        decimal principalAmount)
+        decimal principalAmount,
+        Guid? requestId)
     {
         Id = Guid.NewGuid();
         AccountId = accountId;
@@ -23,6 +24,7 @@ public sealed class LoanPayment
         Amount = amount;
         InterestAmount = interestAmount;
         PrincipalAmount = principalAmount;
+        RequestId = requestId;
         PaidAtUtc = DateTime.UtcNow;
     }
 
@@ -34,6 +36,9 @@ public sealed class LoanPayment
     public decimal Amount { get; private set; }
     public decimal InterestAmount { get; private set; }
     public decimal PrincipalAmount { get; private set; }
+    public Guid? RequestId { get; private set; }
+    public string? ReceiptName { get; private set; }
+    public LoanPaymentReceipt? Receipt { get; private set; }
     public DateTime PaidAtUtc { get; private set; }
 
     public static LoanPayment Create(
@@ -42,8 +47,15 @@ public sealed class LoanPayment
         LoanPaymentType type,
         decimal amount,
         decimal interestAmount,
-        decimal principalAmount)
+        decimal principalAmount,
+        Guid? requestId = null)
     {
-        return new LoanPayment(accountId, loanId, type, amount, interestAmount, principalAmount);
+        return new LoanPayment(accountId, loanId, type, amount, interestAmount, principalAmount, requestId);
+    }
+
+    public void AttachReceipt(string name, string contentType, byte[] content)
+    {
+        ReceiptName = name;
+        Receipt = new LoanPaymentReceipt(Id, contentType, content);
     }
 }

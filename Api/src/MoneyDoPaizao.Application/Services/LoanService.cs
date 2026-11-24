@@ -54,38 +54,49 @@ public sealed class LoanService(
         return loans.Select(loan => Map(loan, now)).ToList();
     }
 
-    public async Task<LoanResponse> RegisterPaymentAsync(Guid accountId, Guid id, LoanPaymentRequest request, CancellationToken cancellationToken = default)
+    public async Task<LoanResponse> RegisterPaymentAsync(Guid accountId, Guid id, LoanPaymentRequest request, CancellationToken cancellationToken = default, LoanPaymentAttachment? receipt = null)
     {
-        var loan = await loanRepository.GetByIdAsync(accountId, id, cancellationToken);
-        if (loan is null)
-        {
-            throw new BusinessValidationException("Empréstimo não encontrado.");
-        }
-
-        if (loan.Status == LoanStatus.Paid)
-        {
-            throw new BusinessValidationException("Este empréstimo já foi finalizado.");
-        }
-
         var type = request.Type.Trim().Equals("Full", StringComparison.OrdinalIgnoreCase)
             ? LoanPaymentType.Full
             : request.Type.Trim().Equals("InterestOnly", StringComparison.OrdinalIgnoreCase)
                 ? LoanPaymentType.InterestOnly
                 : throw new BusinessValidationException("Tipo de pagamento inválido.");
 
-        var calculation = LoanCalculator.Calculate(loan, DateTime.UtcNow);
-        var payment = type == LoanPaymentType.Full
-            ? LoanPayment.Create(accountId, loan.Id, type, calculation.TotalDue, calculation.InterestDue, loan.PrincipalAmount)
-            : LoanPayment.Create(accountId, loan.Id, type, calculation.InterestDue, calculation.InterestDue, 0);
-
-        await loanRepository.AddPaymentAsync(payment, cancellationToken);
-        if (type == LoanPaymentType.Full)
+        var loan = await loanRepository.RegisterPaymentAsync(accountId, id, currentLoan =>
         {
-            loan.MarkAsPaid();
-        }
+            if (request.RequestId is not null && currentLoan.Payments.Any(payment => payment.RequestId == request.RequestId))
+            {
+                return null;
+            }
 
-        await loanRepository.SaveChangesAsync(cancellationToken);
+            if (currentLoan.Status == LoanStatus.Paid)
+            {
+                throw new BusinessValidationException("Este empréstimo já foi finalizado.");
+            }
+
+            var calculation = LoanCalculator.Calculate(currentLoan, DateTime.UtcNow);
+            var payment = type == LoanPaymentType.Full
+                ? LoanPayment.Create(accountId, id, type, calculation.TotalDue, calculation.InterestDue, currentLoan.PrincipalAmount, request.RequestId)
+                : LoanPayment.Create(accountId, id, type, calculation.InterestDue, calculation.InterestDue, 0, request.RequestId);
+
+            if (receipt is not null)
+            {
+                payment.AttachReceipt(receipt.Name, receipt.ContentType, receipt.Content);
+            }
+
+            if (type == LoanPaymentType.Full)
+            {
+                currentLoan.MarkAsPaid();
+            }
+
+            return payment;
+        }, cancellationToken) ?? throw new BusinessValidationException("Empréstimo não encontrado.");
         return Map(loan, DateTime.UtcNow);
+    }
+
+    public Task<LoanPaymentAttachment?> GetPaymentReceiptAsync(Guid accountId, Guid id, Guid paymentId, CancellationToken cancellationToken = default)
+    {
+        return loanRepository.GetPaymentReceiptAsync(accountId, id, paymentId, cancellationToken);
     }
 
     private static LoanResponse Map(Loan loan, DateTime now)
@@ -108,11 +119,13 @@ public sealed class LoanService(
             loan.Payments
                 .OrderByDescending(payment => payment.PaidAtUtc)
                 .Select(payment => new LoanPaymentResponse(
+                    payment.Id,
                     payment.Type.ToString(),
                     payment.Amount,
                     payment.InterestAmount,
                     payment.PrincipalAmount,
-                    payment.PaidAtUtc))
+                    payment.PaidAtUtc,
+                    payment.ReceiptName))
                 .ToList());
     }
 }
@@ -121,7 +134,8 @@ public interface ILoanService
 {
     Task<LoanResponse> CreateAsync(Guid accountId, LoanCreateRequest request, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<LoanResponse>> GetAllAsync(Guid accountId, CancellationToken cancellationToken = default);
-    Task<LoanResponse> RegisterPaymentAsync(Guid accountId, Guid id, LoanPaymentRequest request, CancellationToken cancellationToken = default);
+    Task<LoanResponse> RegisterPaymentAsync(Guid accountId, Guid id, LoanPaymentRequest request, CancellationToken cancellationToken = default, LoanPaymentAttachment? receipt = null);
+    Task<LoanPaymentAttachment?> GetPaymentReceiptAsync(Guid accountId, Guid id, Guid paymentId, CancellationToken cancellationToken = default);
 }
 
 public static class LoanCalculator

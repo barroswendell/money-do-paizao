@@ -14,6 +14,7 @@ import { Card } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Text } from '../components/ui/text';
 import { DatePickerField } from '../components/DatePickerField';
+import { formatPhone } from '../lib/format';
 import { register, type ProductModule } from '../services/api';
 import { RootStackParamList } from '../navigation/AppNavigator';
 
@@ -43,14 +44,6 @@ function isValidDate(value: string) {
   return date.getUTCFullYear() === year
     && date.getUTCMonth() === month - 1
     && date.getUTCDate() === day;
-}
-
-function formatPhone(value: string) {
-  const digits = value.replace(/\D/g, '').slice(0, 11);
-  if (digits.length <= 2) return digits.length ? `(${digits}` : '';
-  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
 }
 
 const moduleOptions: { value: ProductModule; title: string; description: string; icon: typeof HandCoins }[] = [

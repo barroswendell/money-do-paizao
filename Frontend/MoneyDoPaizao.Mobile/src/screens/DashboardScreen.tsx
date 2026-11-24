@@ -183,7 +183,7 @@ export function DashboardScreen({ navigation, route }: Props) {
                     key={item.label}
                     onPress={() => {
                       setMenuOpen(false);
-                      if (item.target === 'Customers') navigation.navigate('Customers', { token });
+                      if (item.target === 'Customers') navigation.navigate('Customers', { token, showPhone: true });
                       if (item.target === 'Loans') navigation.navigate('Loans', { token });
                       if (item.target === 'Finance') navigation.navigate('Finance', { userName, role, token, modules });
                       if (item.target === 'Settings') navigation.navigate('Settings', { token });

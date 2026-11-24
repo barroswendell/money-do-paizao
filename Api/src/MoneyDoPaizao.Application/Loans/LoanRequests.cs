@@ -7,14 +7,18 @@ public sealed record LoanCreateRequest(
     decimal MonthlyInterestRatePercent,
     decimal LateDailyInterestRatePercent);
 
-public sealed record LoanPaymentRequest(string Type);
+public sealed record LoanPaymentRequest(string Type, Guid? RequestId = null);
+
+public sealed record LoanPaymentAttachment(string Name, string ContentType, byte[] Content);
 
 public sealed record LoanPaymentResponse(
+    Guid Id,
     string Type,
     decimal Amount,
     decimal InterestAmount,
     decimal PrincipalAmount,
-    DateTime PaidAtUtc);
+    DateTime PaidAtUtc,
+    string? ReceiptName);
 
 public sealed record LoanResponse(
     Guid Id,

@@ -8,12 +8,13 @@ public sealed class Customer
     {
     }
 
-    private Customer(Guid accountId, ProductModule module, string name, bool hasReferral, string? referral)
+    private Customer(Guid accountId, ProductModule module, string name, bool hasReferral, string? referral, string? phone)
     {
         Id = Guid.NewGuid();
         AccountId = accountId;
         Module = module;
         Name = name.Trim();
+        Phone = phone;
         HasReferral = hasReferral;
         Referral = hasReferral ? referral?.Trim() : null;
         CreatedAtUtc = DateTime.UtcNow;
@@ -23,13 +24,14 @@ public sealed class Customer
     public Guid AccountId { get; private set; }
     public ProductModule Module { get; private set; }
     public string Name { get; private set; } = string.Empty;
+    public string? Phone { get; private set; }
     public bool HasReferral { get; private set; }
     public string? Referral { get; private set; }
     public DateTime CreatedAtUtc { get; private set; }
     public ICollection<Loan> Loans { get; private set; } = new List<Loan>();
 
-    public static Customer Create(Guid accountId, ProductModule module, string name, bool hasReferral, string? referral)
+    public static Customer Create(Guid accountId, ProductModule module, string name, bool hasReferral, string? referral, string? phone = null)
     {
-        return new Customer(accountId, module, name, hasReferral, referral);
+        return new Customer(accountId, module, name, hasReferral, referral, phone);
     }
 }

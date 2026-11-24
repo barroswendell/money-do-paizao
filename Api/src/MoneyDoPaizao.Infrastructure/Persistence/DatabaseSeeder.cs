@@ -163,8 +163,17 @@ public static class DatabaseSeeder
             ALTER TABLE public.accounts ADD COLUMN IF NOT EXISTS is_dark_mode boolean NOT NULL DEFAULT false;
             ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS account_id uuid;
             ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS module varchar(40);
+            ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS phone varchar(11);
             ALTER TABLE public.loans ADD COLUMN IF NOT EXISTS account_id uuid;
             ALTER TABLE public.loan_payments ADD COLUMN IF NOT EXISTS account_id uuid;
+            ALTER TABLE public.loan_payments ADD COLUMN IF NOT EXISTS request_id uuid;
+            ALTER TABLE public.loan_payments ADD COLUMN IF NOT EXISTS receipt_name varchar(160);
+
+            CREATE TABLE IF NOT EXISTS public.loan_payment_receipts (
+                payment_id uuid PRIMARY KEY REFERENCES public.loan_payments (id) ON DELETE CASCADE,
+                content_type varchar(40) NOT NULL,
+                content bytea NOT NULL
+            );
 
             UPDATE public.customers SET module = 'Loans' WHERE module IS NULL;
 

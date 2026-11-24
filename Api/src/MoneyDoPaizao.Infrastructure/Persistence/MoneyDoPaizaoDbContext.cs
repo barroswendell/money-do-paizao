@@ -12,6 +12,7 @@ public sealed class MoneyDoPaizaoDbContext(DbContextOptions<MoneyDoPaizaoDbConte
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Loan> Loans => Set<Loan>();
     public DbSet<LoanPayment> LoanPayments => Set<LoanPayment>();
+    public DbSet<LoanPaymentReceipt> LoanPaymentReceipts => Set<LoanPaymentReceipt>();
     public DbSet<PartyTheme> PartyThemes => Set<PartyTheme>();
     public DbSet<PartyEvent> PartyEvents => Set<PartyEvent>();
     public DbSet<FinanceEntry> FinanceEntries => Set<FinanceEntry>();
@@ -58,6 +59,7 @@ public sealed class MoneyDoPaizaoDbContext(DbContextOptions<MoneyDoPaizaoDbConte
         customer.ToTable("customers");
         customer.HasKey(item => item.Id);
         customer.Property(item => item.Name).HasMaxLength(160).IsRequired();
+        customer.Property(item => item.Phone).HasMaxLength(11);
         customer.Property(item => item.Referral).HasMaxLength(160);
         customer.Property(item => item.AccountId).IsRequired();
         customer.Property(item => item.Module).HasConversion<string>().HasMaxLength(40).IsRequired();
@@ -83,9 +85,20 @@ public sealed class MoneyDoPaizaoDbContext(DbContextOptions<MoneyDoPaizaoDbConte
         payment.Property(item => item.InterestAmount).HasPrecision(18, 2).IsRequired();
         payment.Property(item => item.PrincipalAmount).HasPrecision(18, 2).IsRequired();
         payment.Property(item => item.AccountId).IsRequired();
+        payment.Property(item => item.ReceiptName).HasMaxLength(160);
         payment.HasOne(item => item.Loan)
             .WithMany(item => item.Payments)
             .HasForeignKey(item => item.LoanId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        var receipt = modelBuilder.Entity<LoanPaymentReceipt>();
+        receipt.ToTable("loan_payment_receipts");
+        receipt.HasKey(item => item.PaymentId);
+        receipt.Property(item => item.ContentType).HasMaxLength(40).IsRequired();
+        receipt.Property(item => item.Content).IsRequired();
+        receipt.HasOne<LoanPayment>()
+            .WithOne(item => item.Receipt)
+            .HasForeignKey<LoanPaymentReceipt>(item => item.PaymentId)
             .OnDelete(DeleteBehavior.Cascade);
 
         var theme = modelBuilder.Entity<PartyTheme>();

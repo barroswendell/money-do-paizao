@@ -20,7 +20,18 @@ public sealed class CustomerService(ICustomerRepository customerRepository) : IC
             throw new BusinessValidationException("Informe a indicação do cliente.");
         }
 
-        var customer = Customer.Create(accountId, module, request.Name, request.HasReferral, request.Referral);
+        string? phone = null;
+        if (module == ProductModule.Loans && !string.IsNullOrWhiteSpace(request.Phone))
+        {
+            phone = new string(request.Phone.Where(char.IsAsciiDigit).ToArray());
+            if (phone.Length is < 10 or > 11 || request.Phone.Any(character =>
+                !char.IsAsciiDigit(character) && character is not ('(' or ')' or ' ' or '-')))
+            {
+                throw new BusinessValidationException("Informe um telefone válido com DDD.");
+            }
+        }
+
+        var customer = Customer.Create(accountId, module, request.Name, request.HasReferral, request.Referral, phone);
         await customerRepository.AddAsync(customer, cancellationToken);
         await customerRepository.SaveChangesAsync(cancellationToken);
         return Map(customer);
@@ -34,7 +45,7 @@ public sealed class CustomerService(ICustomerRepository customerRepository) : IC
 
     private static CustomerResponse Map(Customer customer)
     {
-        return new CustomerResponse(customer.Id, customer.Name, customer.HasReferral, customer.Referral, customer.CreatedAtUtc);
+        return new CustomerResponse(customer.Id, customer.Name, customer.HasReferral, customer.Referral, customer.CreatedAtUtc, customer.Phone);
     }
 }
 

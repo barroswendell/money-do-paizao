@@ -1,19 +1,40 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
-import { ArrowLeft, CalendarClock, CheckCircle2, ChevronDown, ChevronUp, HandCoins, History, Percent, Plus, WalletCards } from 'lucide-react-native';
+import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
+import { randomUUID } from 'expo-crypto';
+import { getDocumentAsync, type DocumentPickerAsset } from 'expo-document-picker';
+import { File as LocalFile } from 'expo-file-system';
+import { ArrowLeft, CalendarClock, CheckCircle2, ChevronDown, ChevronUp, Download, HandCoins, History, Paperclip, Percent, Plus, WalletCards, X } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Button, ButtonText } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Text } from '../components/ui/text';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { createLoan, getCustomers, getLoans, registerLoanPayment, type Customer, type Loan } from '../services/api';
+import { createLoan, downloadLoanPaymentReceipt, getCustomers, getLoans, registerLoanPayment, type Customer, type Loan, type LoanPayment, type LoanPaymentType } from '../services/api';
 import { formatCurrency, formatDate } from '../lib/format';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Loans'>;
+type PendingPayment = { loan: Loan; type: LoanPaymentType; requestId: string };
+
+const MAX_RECEIPT_BYTES = 5 * 1024 * 1024;
+const RECEIPT_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
 
 function parseNumber(value: string) {
   return Number(value.replace(',', '.').replace(/[^0-9.-]/g, ''));
+}
+
+function discardPickedReceipt(receipt: DocumentPickerAsset) {
+  if (Platform.OS === 'web') {
+    URL.revokeObjectURL(receipt.uri);
+    return;
+  }
+
+  try {
+    const file = new LocalFile(receipt.uri);
+    if (file.exists) file.delete();
+  } catch {
+    // The document picker only copies the file into the system-managed cache.
+  }
 }
 
 export function LoansScreen({ navigation, route }: Props) {
@@ -30,8 +51,14 @@ export function LoansScreen({ navigation, route }: Props) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [actionLoanId, setActionLoanId] = useState('');
   const [expandedLoanId, setExpandedLoanId] = useState('');
+  const [pendingPayment, setPendingPayment] = useState<PendingPayment | null>(null);
+  const [receipt, setReceipt] = useState<DocumentPickerAsset | null>(null);
+  const [pickingReceipt, setPickingReceipt] = useState(false);
+  const [savingPayment, setSavingPayment] = useState(false);
+  const [paymentError, setPaymentError] = useState('');
+  const [downloadingPaymentId, setDownloadingPaymentId] = useState('');
+  const [downloadError, setDownloadError] = useState<{ paymentId: string; message: string } | null>(null);
 
   async function loadData() {
     try {
@@ -49,6 +76,10 @@ export function LoansScreen({ navigation, route }: Props) {
   useEffect(() => {
     loadData();
   }, [token]);
+
+  useEffect(() => {
+    if (receipt) return () => discardPickedReceipt(receipt);
+  }, [receipt]);
 
   async function handleCreate() {
     setError('');
@@ -80,15 +111,67 @@ export function LoansScreen({ navigation, route }: Props) {
     }
   }
 
-  async function handlePayment(loanId: string, type: 'Full' | 'InterestOnly') {
+  function openPayment(loan: Loan, type: LoanPaymentType) {
+    setPaymentError('');
+    setPendingPayment({ loan, type, requestId: randomUUID() });
+  }
+
+  function closePayment() {
+    setPendingPayment(null);
+    setReceipt(null);
+  }
+
+  async function chooseReceipt() {
+    setPaymentError('');
+    setPickingReceipt(true);
     try {
-      setActionLoanId(loanId);
-      await registerLoanPayment(token, loanId, type);
-      await loadData();
-    } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível registrar o pagamento.');
+      const result = await getDocumentAsync({ type: RECEIPT_TYPES, copyToCacheDirectory: true, base64: false });
+      if (result.canceled || !result.assets[0]) return;
+
+      const file = result.assets[0];
+      if (file.size !== undefined && (file.size === 0 || file.size > MAX_RECEIPT_BYTES)) {
+        discardPickedReceipt(file);
+        setPaymentError('Escolha um comprovante de até 5 MB.');
+        return;
+      }
+
+      setReceipt(file);
+    } catch {
+      setPaymentError('Não foi possível selecionar o comprovante.');
     } finally {
-      setActionLoanId('');
+      setPickingReceipt(false);
+    }
+  }
+
+  async function handlePayment() {
+    if (!pendingPayment || savingPayment || pickingReceipt) return;
+
+    const { loan, type, requestId } = pendingPayment;
+    setPaymentError('');
+    setSavingPayment(true);
+    try {
+      const updatedLoan = await registerLoanPayment(token, loan.id, type, requestId, receipt);
+      setLoans((current) => current.map((item) => item.id === updatedLoan.id ? updatedLoan : item));
+      setExpandedLoanId(updatedLoan.id);
+      closePayment();
+    } catch (exception) {
+      setPaymentError(exception instanceof Error ? exception.message : 'Não foi possível registrar o pagamento.');
+    } finally {
+      setSavingPayment(false);
+    }
+  }
+
+  async function handleDownload(loanId: string, payment: LoanPayment) {
+    if (!payment.receiptName || downloadingPaymentId) return;
+
+    setDownloadError(null);
+    setDownloadingPaymentId(payment.id);
+    try {
+      await downloadLoanPaymentReceipt(token, loanId, payment.id, payment.receiptName);
+    } catch {
+      setDownloadError({ paymentId: payment.id, message: 'Não foi possível baixar o comprovante.' });
+    } finally {
+      setDownloadingPaymentId('');
     }
   }
 
@@ -178,6 +261,7 @@ export function LoansScreen({ navigation, route }: Props) {
             <Text className="text-[13px] font-bold text-muted">{loans.length}</Text>
           </View>
 
+          {!formOpen && error ? <Text className="mb-3 text-[13px] text-destructive">{error}</Text> : null}
           {loading ? <ActivityIndicator color="#D4A64A" size="large" /> : null}
           {!loading && loans.length === 0 ? (
             <Card className="items-center p-8">
@@ -232,7 +316,7 @@ export function LoansScreen({ navigation, route }: Props) {
                     {paid && fullPayment ? <Text className="mb-3 text-[13px] font-bold text-[#1A7F5A]">Empréstimo finalizado em {formatDate(fullPayment.paidAtUtc)}</Text> : null}
                     {payments.length === 0 ? <Text className="text-[12px] text-muted">Nenhum pagamento registrado ainda.</Text> : null}
                     {payments.map((payment) => (
-                      <View className="mb-3 border-b border-border pb-3 last:mb-0 last:border-b-0 last:pb-0" key={`${payment.type}-${payment.paidAtUtc}`}>
+                      <View className="mb-3 border-b border-border pb-3 last:mb-0 last:border-b-0 last:pb-0" key={payment.id ?? `${payment.type}-${payment.paidAtUtc}`}>
                         <View className="flex-row items-start justify-between">
                           <View className="flex-1 pr-3">
                             <Text className="text-[14px] font-bold text-navy">{payment.type === 'Full' ? 'Empréstimo finalizado' : 'Pagamento somente de juros'}</Text>
@@ -241,6 +325,13 @@ export function LoansScreen({ navigation, route }: Props) {
                           <Text className="text-[13px] font-extrabold text-navy">{formatCurrency(payment.amount)}</Text>
                         </View>
                         <Text className="mt-2 text-[11px] text-muted">Juros: {formatCurrency(payment.interestAmount)} · Principal: {formatCurrency(payment.principalAmount)}</Text>
+                        {payment.receiptName ? (
+                          <Pressable accessibilityRole="button" className="mt-2 flex-row items-center gap-2 py-1" disabled={!!downloadingPaymentId} onPress={() => handleDownload(loan.id, payment)}>
+                            <Download color="#D4A64A" size={16} strokeWidth={1.8} />
+                            <Text className="text-[12px] font-bold text-navy">{downloadingPaymentId === payment.id ? 'Baixando...' : 'Baixar comprovante'}</Text>
+                          </Pressable>
+                        ) : null}
+                        {downloadError?.paymentId === payment.id ? <Text accessibilityLiveRegion="polite" className="mt-1 text-[12px] text-destructive">{downloadError.message}</Text> : null}
                       </View>
                     ))}
                   </View>
@@ -248,11 +339,11 @@ export function LoansScreen({ navigation, route }: Props) {
 
                 {!paid ? (
                   <View className="flex-row gap-3">
-                    <Button className="flex-1 flex-row gap-2" disabled={actionLoanId === loan.id} onPress={() => handlePayment(loan.id, 'InterestOnly')} variant="outline">
+                    <Button accessibilityRole="button" className="flex-1 flex-row gap-2" onPress={() => openPayment(loan, 'InterestOnly')} variant="outline">
                       <Percent color="#071629" size={16} strokeWidth={1.8} />
                       <ButtonText variant="outline">Pagar juros</ButtonText>
                     </Button>
-                    <Button className="flex-1 flex-row gap-2" disabled={actionLoanId === loan.id} onPress={() => handlePayment(loan.id, 'Full')}>
+                    <Button accessibilityRole="button" className="flex-1 flex-row gap-2" onPress={() => openPayment(loan, 'Full')}>
                       <CheckCircle2 color="#071629" size={16} strokeWidth={1.8} />
                       <ButtonText>Finalizar pago</ButtonText>
                     </Button>
@@ -263,6 +354,43 @@ export function LoansScreen({ navigation, route }: Props) {
           }) : null}
         </View>
       </ScrollView>
+
+      {pendingPayment ? (
+        <Modal animationType="fade" onRequestClose={() => { if (!savingPayment && !pickingReceipt) closePayment(); }} transparent>
+          <View className="flex-1 items-center justify-center bg-black/50 p-5">
+            <Card className="w-full max-w-md p-5">
+              <Text accessibilityRole="header" className="text-[18px] font-extrabold text-navy">{pendingPayment.type === 'Full' ? 'Finalizar empréstimo' : 'Pagar somente os juros'}</Text>
+              <Text className="mb-5 mt-1 text-[14px] text-muted">{pendingPayment.loan.customerName}</Text>
+
+              <Text className="mb-1 font-bold text-navy">Comprovante de pagamento (opcional)</Text>
+              <Text className="mb-3 text-[12px] text-muted">PDF, JPG ou PNG de até 5 MB.</Text>
+              {receipt ? (
+                <View className="mb-3 flex-row items-center gap-2 rounded-xl border border-border bg-input px-3 py-2">
+                  <Paperclip color="#6D7784" size={16} strokeWidth={1.8} />
+                  <Text className="flex-1 text-[13px] text-navy" numberOfLines={2}>{receipt.name}</Text>
+                  <Pressable accessibilityLabel="Remover comprovante" accessibilityRole="button" className="p-2" disabled={savingPayment || pickingReceipt} onPress={() => { setReceipt(null); setPaymentError(''); }}>
+                    <X color="#6D7784" size={18} strokeWidth={1.8} />
+                  </Pressable>
+                </View>
+              ) : null}
+              <Button accessibilityRole="button" className="mb-4 flex-row gap-2" disabled={savingPayment || pickingReceipt} onPress={chooseReceipt} variant="outline">
+                <Paperclip color="#6D7784" size={16} strokeWidth={1.8} />
+                <ButtonText variant="outline">{pickingReceipt ? 'Selecionando...' : receipt ? 'Trocar arquivo' : 'Selecionar arquivo'}</ButtonText>
+              </Button>
+
+              {paymentError ? <Text accessibilityLiveRegion="polite" className="mb-3 text-[13px] text-destructive">{paymentError}</Text> : null}
+              <View className="flex-row gap-3">
+                <Button accessibilityRole="button" className="flex-1" disabled={savingPayment || pickingReceipt} onPress={closePayment} variant="outline">
+                  <ButtonText variant="outline">Cancelar</ButtonText>
+                </Button>
+                <Button accessibilityRole="button" className="flex-1" disabled={savingPayment || pickingReceipt} onPress={handlePayment}>
+                  <ButtonText>{savingPayment ? 'Salvando...' : 'Confirmar'}</ButtonText>
+                </Button>
+              </View>
+            </Card>
+          </View>
+        </Modal>
+      ) : null}
     </View>
   );
 }

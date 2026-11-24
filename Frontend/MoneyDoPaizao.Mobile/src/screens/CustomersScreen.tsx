@@ -1,21 +1,23 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
-import { ArrowLeft, Plus, UserRound, UsersRound } from 'lucide-react-native';
+import { ArrowLeft, Phone, Plus, UserRound, UsersRound } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Button, ButtonText } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Text } from '../components/ui/text';
+import { formatPhone } from '../lib/format';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { createCustomer, getCustomers, type Customer } from '../services/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Customers'>;
 
 export function CustomersScreen({ navigation, route }: Props) {
-  const { token } = route.params;
+  const { token, showPhone } = route.params;
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [formOpen, setFormOpen] = useState(false);
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [hasReferral, setHasReferral] = useState(false);
   const [referral, setReferral] = useState('');
   const [error, setError] = useState('');
@@ -41,8 +43,14 @@ export function CustomersScreen({ navigation, route }: Props) {
     setError('');
     try {
       setSaving(true);
-      await createCustomer(token, { name, hasReferral, referral: hasReferral ? referral : null });
+      await createCustomer(token, {
+        name,
+        hasReferral,
+        referral: hasReferral ? referral : null,
+        ...(showPhone ? { phone: phone || null } : {}),
+      });
       setName('');
+      setPhone('');
       setReferral('');
       setHasReferral(false);
       setFormOpen(false);
@@ -83,6 +91,25 @@ export function CustomersScreen({ navigation, route }: Props) {
                 <UserRound color="#6D7784" size={18} strokeWidth={1.8} />
                 <Input className="border-0 bg-transparent px-3" onChangeText={setName} placeholder="Nome do cliente" value={name} />
               </View>
+
+              {showPhone ? (
+                <View className="mb-4">
+                  <Text className="mb-1.5 text-[14px] font-bold text-navy">Telefone com DDD (opcional)</Text>
+                  <View className="flex-row items-center rounded-xl border border-border bg-input px-3.5">
+                    <Phone color="#6D7784" size={18} strokeWidth={1.8} />
+                    <Input
+                      accessibilityLabel="Telefone com DDD"
+                      autoComplete="tel-national"
+                      className="border-0 bg-transparent px-3"
+                      keyboardType="phone-pad"
+                      maxLength={15}
+                      onChangeText={(value) => setPhone(formatPhone(value))}
+                      placeholder="(00) 00000-0000"
+                      value={phone}
+                    />
+                  </View>
+                </View>
+              ) : null}
 
               <View className="mb-4 flex-row items-center justify-between rounded-xl border border-border bg-input px-4 py-3">
                 <View className="flex-1 pr-3">
@@ -132,6 +159,7 @@ export function CustomersScreen({ navigation, route }: Props) {
               <View className="flex-row items-center justify-between">
                 <View className="flex-1">
                   <Text className="text-[16px] font-extrabold text-navy">{customer.name}</Text>
+                  {showPhone && customer.phone ? <Text className="mt-1 text-[12px] text-muted">{formatPhone(customer.phone)}</Text> : null}
                   {customer.hasReferral ? <Text className="mt-1 text-[12px] text-muted">Indicação: {customer.referral}</Text> : null}
                 </View>
                 <View className="h-9 w-9 items-center justify-center rounded-xl bg-gold/20">
