@@ -5,7 +5,8 @@ public sealed record LoanCreateRequest(
     decimal PrincipalAmount,
     int DueDay,
     decimal MonthlyInterestRatePercent,
-    decimal LateDailyInterestRatePercent);
+    decimal LateDailyInterestRatePercent,
+    string? Notes = null);
 
 public sealed record LoanPaymentRequest(string Type, Guid? RequestId = null);
 
@@ -34,4 +35,5 @@ public sealed record LoanResponse(
     decimal TotalDue,
     string Status,
     decimal PaidInterest,
-    IReadOnlyList<LoanPaymentResponse> Payments);
+    IReadOnlyList<LoanPaymentResponse> Payments,
+    string? Notes);

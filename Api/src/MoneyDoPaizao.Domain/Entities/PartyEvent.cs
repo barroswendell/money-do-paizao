@@ -1,7 +1,29 @@
 namespace MoneyDoPaizao.Domain.Entities;
 
-public sealed class PartyEvent
+public sealed class PartyEvent : IManagedRecord
 {
+    public DateTime? DeactivatedAtUtc { get; private set; }
+
+    public void Deactivate(DateTime atUtc) => DeactivatedAtUtc ??= atUtc;
+
+    public void AttachReferences(Customer customer, PartyTheme? theme)
+    {
+        CustomerId = customer.Id;
+        Customer = customer;
+        ThemeId = theme?.Id;
+        Theme = theme;
+    }
+
+    public void UpdateDetails(DateTime eventDate, decimal totalAmount, decimal depositAmount, string? notes, decimal receivedAmount)
+    {
+        EventDate = DateTime.SpecifyKind(eventDate.Date, DateTimeKind.Unspecified);
+        TotalAmount = totalAmount;
+        DepositReceived = depositAmount > 0;
+        DepositAmount = depositAmount;
+        SetReceivedAmount(receivedAmount);
+        Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+    }
+
     private PartyEvent()
     {
     }

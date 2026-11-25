@@ -13,7 +13,7 @@ public sealed class LoanRepository(MoneyDoPaizaoDbContext context) : ILoanReposi
         return await context.Loans
             .Include(item => item.Customer)
             .Include(item => item.Payments)
-            .Where(item => item.AccountId == accountId)
+            .Where(item => item.AccountId == accountId && item.DeactivatedAtUtc == null)
             .AsNoTracking()
             .OrderByDescending(item => item.CreatedAtUtc)
             .ToListAsync(cancellationToken);
@@ -24,7 +24,7 @@ public sealed class LoanRepository(MoneyDoPaizaoDbContext context) : ILoanReposi
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
         // Read the payment history after locking the loan so concurrent requests see each other's updates.
         var loan = await context.Loans
-            .FromSql($"SELECT * FROM loans WHERE account_id = {accountId} AND id = {id} FOR UPDATE")
+            .FromSql($"SELECT * FROM loans WHERE account_id = {accountId} AND id = {id} AND deactivated_at_utc IS NULL FOR UPDATE")
             .SingleOrDefaultAsync(cancellationToken);
         if (loan is null)
         {
@@ -49,7 +49,7 @@ public sealed class LoanRepository(MoneyDoPaizaoDbContext context) : ILoanReposi
     {
         return context.LoanPayments
             .Where(item => item.LoanId == id && item.Id == paymentId &&
-                item.AccountId == accountId && item.Loan!.AccountId == accountId && item.Receipt != null)
+                item.AccountId == accountId && item.Loan!.AccountId == accountId && item.Loan.DeactivatedAtUtc == null && item.Receipt != null)
             .Select(item => new LoanPaymentAttachment(item.ReceiptName!, item.Receipt!.ContentType, item.Receipt.Content))
             .SingleOrDefaultAsync(cancellationToken);
     }

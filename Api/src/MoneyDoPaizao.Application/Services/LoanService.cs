@@ -8,13 +8,54 @@ namespace MoneyDoPaizao.Application.Services;
 
 public sealed class LoanService(
     ILoanRepository loanRepository,
-    ICustomerRepository customerRepository) : ILoanService
+    ICustomerRepository customerRepository,
+    IManagedRecordStore records) : ILoanService
 {
     public async Task<LoanResponse> CreateAsync(Guid accountId, LoanCreateRequest request, CancellationToken cancellationToken = default)
     {
-        if (request.PrincipalAmount <= 0)
+        Validate(request);
+        var customer = await FindCustomerAsync(accountId, request.CustomerId, cancellationToken);
+        var loan = Loan.Create(accountId, request.CustomerId, request.PrincipalAmount, request.DueDay,
+            request.MonthlyInterestRatePercent, request.LateDailyInterestRatePercent, request.Notes);
+        loan.AttachCustomer(customer);
+
+        await loanRepository.AddAsync(loan, cancellationToken);
+        await loanRepository.SaveChangesAsync(cancellationToken);
+        return Map(loan, DateTime.UtcNow);
+    }
+
+    public async Task<LoanResponse?> UpdateAsync(Guid accountId, Guid id, LoanCreateRequest request, CancellationToken cancellationToken = default)
+    {
+        var loan = await records.ChangeAsync<Loan>(accountId, ProductModule.Loans, id, async current =>
         {
-            throw new BusinessValidationException("Informe um valor de empréstimo maior que zero.");
+            Validate(request);
+            if ((current.Payments.Count > 0 || current.Status == LoanStatus.Paid) &&
+                (current.CustomerId != request.CustomerId || current.PrincipalAmount != request.PrincipalAmount ||
+                 current.DueDay != request.DueDay || current.MonthlyInterestRatePercent != request.MonthlyInterestRatePercent ||
+                 current.LateDailyInterestRatePercent != request.LateDailyInterestRatePercent))
+            {
+                throw new BusinessValidationException("Empréstimos com pagamento registrado permitem alterar apenas a observação.");
+            }
+
+            var customer = current.CustomerId == request.CustomerId && current.Customer is not null
+                ? current.Customer : await FindCustomerAsync(accountId, request.CustomerId, cancellationToken);
+            current.Update(request.CustomerId, request.PrincipalAmount, request.DueDay,
+                request.MonthlyInterestRatePercent, request.LateDailyInterestRatePercent, request.Notes);
+            current.AttachCustomer(customer);
+        }, cancellationToken);
+        return loan is null ? null : Map(loan, DateTime.UtcNow);
+    }
+
+    private async Task<Customer> FindCustomerAsync(Guid accountId, Guid customerId, CancellationToken cancellationToken) =>
+        await customerRepository.GetByIdAsync(accountId, ProductModule.Loans, customerId, cancellationToken)
+            ?? throw new BusinessValidationException("O cliente selecionado não foi encontrado.");
+
+    private static void Validate(LoanCreateRequest request)
+    {
+        if (request.PrincipalAmount <= 0 || request.PrincipalAmount > 9_999_999_999_999_999.99m ||
+            request.PrincipalAmount != decimal.Round(request.PrincipalAmount, 2))
+        {
+            throw new BusinessValidationException("Informe um valor de empréstimo maior que zero, com até duas casas decimais.");
         }
 
         if (request.DueDay is < 1 or > 31)
@@ -22,30 +63,17 @@ public sealed class LoanService(
             throw new BusinessValidationException("O dia de vencimento deve estar entre 1 e 31.");
         }
 
-        if (request.MonthlyInterestRatePercent < 0 || request.LateDailyInterestRatePercent < 0)
+        if (!IsRate(request.MonthlyInterestRatePercent) || !IsRate(request.LateDailyInterestRatePercent))
         {
-            throw new BusinessValidationException("As taxas de juros não podem ser negativas.");
+            throw new BusinessValidationException("Informe taxas de juros entre zero e 9.999,9999, com até quatro casas decimais.");
         }
-
-        var customer = await customerRepository.GetByIdAsync(accountId, ProductModule.Loans, request.CustomerId, cancellationToken);
-        if (customer is null)
+        if (request.Notes?.Trim().Length > 500)
         {
-            throw new BusinessValidationException("O cliente selecionado não foi encontrado.");
+            throw new BusinessValidationException("A observação do empréstimo pode ter até 500 caracteres.");
         }
-
-        var loan = Loan.Create(
-            accountId,
-            request.CustomerId,
-            request.PrincipalAmount,
-            request.DueDay,
-            request.MonthlyInterestRatePercent,
-            request.LateDailyInterestRatePercent);
-
-        await loanRepository.AddAsync(loan, cancellationToken);
-        await loanRepository.SaveChangesAsync(cancellationToken);
-        loan.AttachCustomer(customer);
-        return Map(loan, DateTime.UtcNow);
     }
+
+    private static bool IsRate(decimal rate) => rate is >= 0 and <= 9999.9999m && decimal.Round(rate, 4) == rate;
 
     public async Task<IReadOnlyList<LoanResponse>> GetAllAsync(Guid accountId, CancellationToken cancellationToken = default)
     {
@@ -126,13 +154,15 @@ public sealed class LoanService(
                     payment.PrincipalAmount,
                     payment.PaidAtUtc,
                     payment.ReceiptName))
-                .ToList());
+                .ToList(),
+            loan.Notes);
     }
 }
 
 public interface ILoanService
 {
     Task<LoanResponse> CreateAsync(Guid accountId, LoanCreateRequest request, CancellationToken cancellationToken = default);
+    Task<LoanResponse?> UpdateAsync(Guid accountId, Guid id, LoanCreateRequest request, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<LoanResponse>> GetAllAsync(Guid accountId, CancellationToken cancellationToken = default);
     Task<LoanResponse> RegisterPaymentAsync(Guid accountId, Guid id, LoanPaymentRequest request, CancellationToken cancellationToken = default, LoanPaymentAttachment? receipt = null);
     Task<LoanPaymentAttachment?> GetPaymentReceiptAsync(Guid accountId, Guid id, Guid paymentId, CancellationToken cancellationToken = default);

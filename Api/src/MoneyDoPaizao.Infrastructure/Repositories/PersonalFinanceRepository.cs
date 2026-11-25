@@ -10,7 +10,7 @@ public sealed class PersonalFinanceRepository(MoneyDoPaizaoDbContext context) : 
     public async Task<IReadOnlyList<FinanceEntry>> GetEntriesAsync(Guid accountId, CancellationToken cancellationToken = default)
     {
         return await context.FinanceEntries
-            .Where(item => item.AccountId == accountId)
+            .Where(item => item.AccountId == accountId && item.DeactivatedAtUtc == null)
             .AsNoTracking()
             .OrderByDescending(item => item.EntryDate)
             .ThenByDescending(item => item.CreatedAtUtc)

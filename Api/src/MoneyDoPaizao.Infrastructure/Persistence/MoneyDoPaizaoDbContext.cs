@@ -1,10 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using MoneyDoPaizao.Application.Interfaces;
 using MoneyDoPaizao.Domain.Entities;
 using MoneyDoPaizao.Domain.Enums;
 
 namespace MoneyDoPaizao.Infrastructure.Persistence;
 
-public sealed class MoneyDoPaizaoDbContext(DbContextOptions<MoneyDoPaizaoDbContext> options) : DbContext(options)
+public sealed class MoneyDoPaizaoDbContext(DbContextOptions<MoneyDoPaizaoDbContext> options, IAuditActor? actor = null) : DbContext(options)
 {
     public DbSet<User> Users => Set<User>();
     public DbSet<Account> Accounts => Set<Account>();
@@ -20,6 +21,19 @@ public sealed class MoneyDoPaizaoDbContext(DbContextOptions<MoneyDoPaizaoDbConte
     public DbSet<Product> Products => Set<Product>();
     public DbSet<Sale> Sales => Set<Sale>();
     public DbSet<SaleInstallmentPayment> SaleInstallmentPayments => Set<SaleInstallmentPayment>();
+    public DbSet<RecordAudit> RecordAudits => Set<RecordAudit>();
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        RecordAudits.AddRange(RecordAuditCapture.Capture(ChangeTracker, actor?.Current));
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        RecordAudits.AddRange(RecordAuditCapture.Capture(ChangeTracker, actor?.Current));
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -73,6 +87,7 @@ public sealed class MoneyDoPaizaoDbContext(DbContextOptions<MoneyDoPaizaoDbConte
         loan.Property(item => item.MonthlyInterestRatePercent).HasPrecision(8, 4).IsRequired();
         loan.Property(item => item.LateDailyInterestRatePercent).HasPrecision(8, 4).IsRequired();
         loan.Property(item => item.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
+        loan.Property(item => item.Notes).HasMaxLength(500);
         loan.Property(item => item.AccountId).IsRequired();
         loan.HasOne(item => item.Customer)
             .WithMany(item => item.Loans)
@@ -174,8 +189,24 @@ public sealed class MoneyDoPaizaoDbContext(DbContextOptions<MoneyDoPaizaoDbConte
         var installmentPayment = modelBuilder.Entity<SaleInstallmentPayment>();
         installmentPayment.ToTable("sale_installment_payments");
         installmentPayment.HasKey(item => new { item.SaleId, item.Number });
+        installmentPayment.Property(item => item.Id).HasDefaultValueSql("gen_random_uuid()");
+        installmentPayment.HasIndex(item => item.Id).IsUnique();
         installmentPayment.Property(item => item.Amount).HasPrecision(18, 2).IsRequired();
         installmentPayment.Property(item => item.PaidByUserName).HasMaxLength(160).IsRequired();
         sale.HasMany(item => item.InstallmentPayments).WithOne().HasForeignKey(item => item.SaleId).OnDelete(DeleteBehavior.Cascade);
+
+        var audit = modelBuilder.Entity<RecordAudit>();
+        audit.ToTable("record_audits");
+        audit.HasKey(item => item.Id);
+        audit.Property(item => item.Module).HasConversion<string>().HasMaxLength(40);
+        audit.Property(item => item.Kind).HasConversion<string>().HasMaxLength(30);
+        audit.Property(item => item.RecordName).HasMaxLength(160);
+        audit.Property(item => item.UserName).HasMaxLength(160);
+        audit.Property(item => item.Action).HasMaxLength(30);
+        audit.Property(item => item.Changes).HasColumnType("jsonb");
+        audit.HasIndex(item => new { item.AccountId, item.Module, item.OccurredAtUtc, item.Id })
+            .HasDatabaseName("ix_record_audits_module_time").IsDescending(false, false, true, true);
+        audit.HasIndex(item => new { item.AccountId, item.Module, item.Kind, item.RecordId, item.OccurredAtUtc, item.Id })
+            .HasDatabaseName("ix_record_audits_record_time").IsDescending(false, false, false, false, true, true);
     }
 }

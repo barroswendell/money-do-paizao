@@ -37,4 +37,19 @@ public sealed class CustomersController(ICustomerService customerService) : Cont
             return BadRequest(new { message = exception.Message });
         }
     }
+
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(Guid id, CustomerCreateRequest request, CancellationToken cancellationToken)
+    {
+        if (!User.HasModule("Loans") && !User.HasModule("Parties") && !User.HasModule("Sales")) return Forbid();
+        try
+        {
+            var updated = await customerService.UpdateAsync(AccountId, CurrentModule, id, request, cancellationToken);
+            return updated is null ? NotFound(new { message = "Registro não encontrado ou desativado." }) : Ok(updated);
+        }
+        catch (BusinessValidationException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
 }

@@ -2,8 +2,20 @@ using MoneyDoPaizao.Domain.Enums;
 
 namespace MoneyDoPaizao.Domain.Entities;
 
-public sealed class Customer
+public sealed class Customer : IManagedRecord
 {
+    public DateTime? DeactivatedAtUtc { get; private set; }
+
+    public void Deactivate(DateTime atUtc) => DeactivatedAtUtc ??= atUtc;
+
+    public void Update(string name, bool hasReferral, string? referral, string? phone)
+    {
+        Name = name.Trim();
+        HasReferral = hasReferral;
+        Referral = hasReferral ? referral?.Trim() : null;
+        Phone = phone;
+    }
+
     private Customer()
     {
     }

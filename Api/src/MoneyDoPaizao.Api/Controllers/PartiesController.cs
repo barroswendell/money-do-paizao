@@ -99,4 +99,49 @@ public sealed class PartiesController(IPartyService partyService) : ControllerBa
             return BadRequest(new { message = exception.Message });
         }
     }
+
+    [HttpPut("themes/{id:guid}")]
+    public async Task<IActionResult> UpdateTheme(Guid id, PartyThemeCreateRequest request, CancellationToken cancellationToken)
+    {
+        if (!User.HasModule("Parties")) return Forbid();
+        try
+        {
+            var updated = await partyService.UpdateThemeAsync(AccountId, id, request, cancellationToken);
+            return updated is null ? NotFound(new { message = "Registro não encontrado ou desativado." }) : Ok(updated);
+        }
+        catch (BusinessValidationException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
+
+    [HttpPut("products/{id:guid}")]
+    public async Task<IActionResult> UpdateProduct(Guid id, PartyProductCreateRequest request, CancellationToken cancellationToken)
+    {
+        if (!User.HasModule("Parties")) return Forbid();
+        try
+        {
+            var updated = await partyService.UpdateProductAsync(AccountId, id, request, cancellationToken);
+            return updated is null ? NotFound(new { message = "Registro não encontrado ou desativado." }) : Ok(updated);
+        }
+        catch (BusinessValidationException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
+
+    [HttpPut("events/{id:guid}")]
+    public async Task<IActionResult> UpdateEvent(Guid id, PartyEventCreateRequest request, CancellationToken cancellationToken)
+    {
+        if (!User.HasModule("Parties")) return Forbid();
+        try
+        {
+            var updated = await partyService.UpdateEventAsync(AccountId, id, request, cancellationToken);
+            return updated is null ? NotFound(new { message = "Registro não encontrado ou desativado." }) : Ok(updated);
+        }
+        catch (BusinessValidationException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
 }

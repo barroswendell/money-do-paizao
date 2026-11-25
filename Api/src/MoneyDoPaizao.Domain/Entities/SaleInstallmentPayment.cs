@@ -8,6 +8,7 @@ public sealed class SaleInstallmentPayment
 
     internal SaleInstallmentPayment(Guid saleId, int number, decimal amount, Guid userId, string userName, DateTime paidAtUtc)
     {
+        Id = Guid.NewGuid();
         SaleId = saleId;
         Number = number;
         Amount = amount;
@@ -16,6 +17,7 @@ public sealed class SaleInstallmentPayment
         PaidAtUtc = paidAtUtc;
     }
 
+    public Guid Id { get; private set; }
     public Guid SaleId { get; private set; }
     public int Number { get; private set; }
     public decimal Amount { get; private set; }

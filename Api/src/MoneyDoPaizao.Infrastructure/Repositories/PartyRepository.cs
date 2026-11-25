@@ -10,7 +10,7 @@ public sealed class PartyRepository(MoneyDoPaizaoDbContext context) : IPartyRepo
     public async Task<IReadOnlyList<PartyTheme>> GetThemesAsync(Guid accountId, CancellationToken cancellationToken = default)
     {
         return await context.PartyThemes
-            .Where(item => item.AccountId == accountId)
+            .Where(item => item.AccountId == accountId && item.DeactivatedAtUtc == null)
             .AsNoTracking()
             .OrderBy(item => item.Name)
             .ToListAsync(cancellationToken);
@@ -18,7 +18,7 @@ public sealed class PartyRepository(MoneyDoPaizaoDbContext context) : IPartyRepo
 
     public Task<PartyTheme?> GetThemeAsync(Guid accountId, Guid id, CancellationToken cancellationToken = default)
     {
-        return context.PartyThemes.SingleOrDefaultAsync(item => item.AccountId == accountId && item.Id == id, cancellationToken);
+        return context.PartyThemes.SingleOrDefaultAsync(item => item.AccountId == accountId && item.DeactivatedAtUtc == null && item.Id == id, cancellationToken);
     }
 
     public async Task AddThemeAsync(PartyTheme theme, CancellationToken cancellationToken = default)
@@ -29,7 +29,7 @@ public sealed class PartyRepository(MoneyDoPaizaoDbContext context) : IPartyRepo
     public async Task<IReadOnlyList<PartyProduct>> GetProductsAsync(Guid accountId, CancellationToken cancellationToken = default)
     {
         return await context.PartyProducts.AsNoTracking()
-            .Where(item => item.AccountId == accountId)
+            .Where(item => item.AccountId == accountId && item.DeactivatedAtUtc == null)
             .OrderBy(item => item.Name)
             .ToListAsync(cancellationToken);
     }
@@ -37,7 +37,7 @@ public sealed class PartyRepository(MoneyDoPaizaoDbContext context) : IPartyRepo
     public async Task<IReadOnlyList<PartyProduct>> GetProductsByIdsAsync(Guid accountId, IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default)
     {
         return await context.PartyProducts.AsNoTracking()
-            .Where(item => item.AccountId == accountId && ids.Contains(item.Id))
+            .Where(item => item.AccountId == accountId && item.DeactivatedAtUtc == null && ids.Contains(item.Id))
             .ToListAsync(cancellationToken);
     }
 
@@ -54,21 +54,18 @@ public sealed class PartyRepository(MoneyDoPaizaoDbContext context) : IPartyRepo
             .ToListAsync(cancellationToken);
     }
 
-    public Task<PartyEvent?> GetEventAsync(Guid accountId, Guid id, CancellationToken cancellationToken = default) =>
-        EventsWithDetails(accountId).SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
-
     public async Task<IReadOnlyList<PartyEvent>> GetEventsForDashboardAsync(Guid accountId, CancellationToken cancellationToken = default)
     {
         return await context.PartyEvents.AsNoTracking()
-            .Where(item => item.AccountId == accountId)
+            .Where(item => item.AccountId == accountId && item.DeactivatedAtUtc == null)
             .ToListAsync(cancellationToken);
     }
 
     private IQueryable<PartyEvent> EventsWithDetails(Guid accountId) => context.PartyEvents
-        .Where(item => item.AccountId == accountId)
+        .Where(item => item.AccountId == accountId && item.DeactivatedAtUtc == null)
         .Include(item => item.Customer)
         .Include(item => item.Theme)
-        .Include(item => item.Products);
+        .Include(item => item.Products.Where(line => line.DeactivatedAtUtc == null));
 
     public async Task AddEventAsync(PartyEvent partyEvent, CancellationToken cancellationToken = default)
     {

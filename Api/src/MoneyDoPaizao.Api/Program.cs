@@ -8,6 +8,7 @@ using MoneyDoPaizao.Infrastructure.Persistence;
 using MoneyDoPaizao.Infrastructure.Repositories;
 using MoneyDoPaizao.Infrastructure.Security;
 using MoneyDoPaizao.Api.Middleware;
+using MoneyDoPaizao.Api.Security;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -30,6 +31,9 @@ builder.Services.AddDbContext<MoneyDoPaizaoDbContext>(options =>
         .UseSnakeCaseNamingConvention());
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IAuditActor, RequestAuditActor>();
+builder.Services.AddScoped<IManagedRecordStore, ManagedRecordStore>();
 builder.Services.AddScoped<IAccountRepository, AccountRepository>();
 builder.Services.AddScoped<IAppearanceService, AppearanceService>();
 builder.Services.AddScoped<IAccountModuleRepository, AccountModuleRepository>();
@@ -94,6 +98,8 @@ app.MapGet("/health/db", async (
                 statusCode: StatusCodes.Status503ServiceUnavailable);
         }
 
+        // The management endpoints require the audit schema to be installed.
+        _ = await context.RecordAudits.AnyAsync(cancellationToken);
         logger.LogInformation("Health check do banco concluído com sucesso.");
         return Results.Ok(new { status = "ok", database = "connected" });
     }

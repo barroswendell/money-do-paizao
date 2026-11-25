@@ -2,8 +2,25 @@ using MoneyDoPaizao.Domain.Enums;
 
 namespace MoneyDoPaizao.Domain.Entities;
 
-public sealed class Loan
+public sealed class Loan : IManagedRecord
 {
+    public DateTime? DeactivatedAtUtc { get; private set; }
+
+    public void Deactivate(DateTime atUtc) => DeactivatedAtUtc ??= atUtc;
+
+    public string? Notes { get; private set; }
+
+    public void Update(Guid customerId, decimal principalAmount, int dueDay, decimal monthlyInterestRatePercent,
+        decimal lateDailyInterestRatePercent, string? notes)
+    {
+        CustomerId = customerId;
+        PrincipalAmount = principalAmount;
+        DueDay = dueDay;
+        MonthlyInterestRatePercent = monthlyInterestRatePercent;
+        LateDailyInterestRatePercent = lateDailyInterestRatePercent;
+        Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+    }
+
     private Loan()
     {
     }
@@ -45,9 +62,13 @@ public sealed class Loan
         decimal principalAmount,
         int dueDay,
         decimal monthlyInterestRatePercent,
-        decimal lateDailyInterestRatePercent)
+        decimal lateDailyInterestRatePercent,
+        string? notes = null)
     {
-        return new Loan(accountId, customerId, principalAmount, dueDay, monthlyInterestRatePercent, lateDailyInterestRatePercent);
+        return new Loan(accountId, customerId, principalAmount, dueDay, monthlyInterestRatePercent, lateDailyInterestRatePercent)
+        {
+            Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim()
+        };
     }
 
     public void AttachCustomer(Customer customer)

@@ -2,8 +2,34 @@ using MoneyDoPaizao.Domain.Enums;
 
 namespace MoneyDoPaizao.Domain.Entities;
 
-public sealed class Sale
+public sealed class Sale : IManagedRecord
 {
+    public DateTime? DeactivatedAtUtc { get; private set; }
+
+    public void Deactivate(DateTime atUtc) => DeactivatedAtUtc ??= atUtc;
+
+    public void AttachReferences(Customer customer, Product product)
+    {
+        CustomerId = customer.Id;
+        Customer = customer;
+        ProductId = product.Id;
+        Product = product;
+    }
+
+    public void UpdateTerms(Sale draft)
+    {
+        PaymentType = draft.PaymentType;
+        PaidAtUtc = draft.PaymentType == SalePaymentType.Cash ? PaidAtUtc ?? draft.PaidAtUtc : null;
+        Status = draft.Status;
+        Amount = draft.Amount;
+        UnitPrice = draft.UnitPrice;
+        DownPaymentAmount = draft.DownPaymentAmount;
+        InstallmentCount = draft.InstallmentCount;
+        InstallmentAmount = draft.InstallmentAmount;
+        LastInstallmentAmount = draft.LastInstallmentAmount;
+        DueDate = draft.DueDate;
+    }
+
     private Sale()
     {
     }

@@ -9,7 +9,8 @@ namespace MoneyDoPaizao.Application.Services;
 public sealed class SalesService(
     IProductRepository productRepository,
     ISaleRepository saleRepository,
-    ICustomerRepository customerRepository) : ISalesService
+    ICustomerRepository customerRepository,
+    IManagedRecordStore records) : ISalesService
 {
     private const decimal MaxSaleAmount = 9_999_999_999_999_999.99m;
     private const int InstallmentsPerPage = 20;
@@ -17,13 +18,29 @@ public sealed class SalesService(
 
     public async Task<ProductResponse> CreateProductAsync(Guid accountId, ProductCreateRequest request, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(request.Name) || request.Name.Trim().Length > 160)
-            throw new BusinessValidationException("Informe o nome do produto com até 160 caracteres.");
+        ValidateProduct(request);
 
         var product = Product.Create(accountId, request.Name);
         await productRepository.AddAsync(product, cancellationToken);
         await productRepository.SaveChangesAsync(cancellationToken);
         return Map(product);
+    }
+
+    public async Task<ProductResponse?> UpdateProductAsync(Guid accountId, Guid id, ProductCreateRequest request, CancellationToken cancellationToken = default)
+    {
+        var product = await records.ChangeAsync<Product>(accountId, ProductModule.Sales, id, current =>
+        {
+            ValidateProduct(request);
+            current.Rename(request.Name);
+            return Task.CompletedTask;
+        }, cancellationToken);
+        return product is null ? null : Map(product);
+    }
+
+    private static void ValidateProduct(ProductCreateRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Name) || request.Name.Trim().Length > 160)
+            throw new BusinessValidationException("Informe o nome do produto com até 160 caracteres.");
     }
 
     public async Task<IReadOnlyList<ProductResponse>> GetProductsAsync(Guid accountId, CancellationToken cancellationToken = default)
@@ -33,22 +50,70 @@ public sealed class SalesService(
 
     public async Task<SaleResponse> CreateSaleAsync(Guid accountId, SaleCreateRequest request, CancellationToken cancellationToken = default)
     {
+        var sale = PrepareSale(accountId, request);
+        var customer = await FindCustomerAsync(accountId, request.CustomerId, cancellationToken);
+        var product = await FindProductAsync(accountId, request.ProductId, cancellationToken);
+        sale.AttachReferences(customer, product);
+        await saleRepository.AddAsync(sale, cancellationToken);
+        await saleRepository.SaveChangesAsync(cancellationToken);
+        return Map(sale, Today());
+    }
+
+    public async Task<SaleResponse?> UpdateSaleAsync(Guid accountId, Guid id, SaleUpdateRequest request, CancellationToken cancellationToken = default)
+    {
+        var sale = await records.ChangeAsync<Sale>(accountId, ProductModule.Sales, id, async current =>
+        {
+            var preserveInstallments = current.PaymentType == SalePaymentType.Installment &&
+                (current.InstallmentPayments.Count > 0 || current.Status == SaleStatus.Paid);
+            if (request.PaymentType.HasValue || request.UnitPrice.HasValue || request.DueDate.HasValue ||
+                request.DownPaymentAmount.HasValue || request.InstallmentCount.HasValue || request.InstallmentAmount.HasValue)
+            {
+                if (!request.PaymentType.HasValue || !request.UnitPrice.HasValue)
+                    throw new BusinessValidationException("Informe a forma de pagamento e o valor do produto para alterar o pagamento.");
+                var draft = PrepareSale(accountId, new SaleCreateRequest(request.CustomerId, request.ProductId, request.PaymentType.Value,
+                    request.DueDate, request.UnitPrice.Value, request.DownPaymentAmount, request.InstallmentCount, request.InstallmentAmount), current.DueDate);
+                if (preserveInstallments && !HasSameTerms(current, draft))
+                    throw new BusinessValidationException("O parcelamento já possui pagamentos registrados. Confira os dados de pagamento originais.");
+                if (!preserveInstallments) current.UpdateTerms(draft);
+            }
+
+            var customer = current.CustomerId == request.CustomerId && current.Customer is not null
+                ? current.Customer : await FindCustomerAsync(accountId, request.CustomerId, cancellationToken);
+            var product = current.ProductId == request.ProductId && current.Product is not null
+                ? current.Product : await FindProductAsync(accountId, request.ProductId, cancellationToken);
+            current.AttachReferences(customer, product);
+        }, cancellationToken);
+        return sale is null ? null : Map(sale, Today());
+    }
+
+    private async Task<Customer> FindCustomerAsync(Guid accountId, Guid id, CancellationToken cancellationToken) =>
+        await customerRepository.GetByIdAsync(accountId, ProductModule.Sales, id, cancellationToken)
+            ?? throw new BusinessValidationException("O cliente selecionado não foi encontrado.");
+
+    private async Task<Product> FindProductAsync(Guid accountId, Guid id, CancellationToken cancellationToken) =>
+        await productRepository.GetByIdAsync(accountId, id, cancellationToken)
+            ?? throw new BusinessValidationException("O produto selecionado não foi encontrado.");
+
+    private static Sale PrepareSale(Guid accountId, SaleCreateRequest request, DateTime? originalDueDate = null)
+    {
         if (request.PaymentType is not SalePaymentType.Cash and not SalePaymentType.Installment)
             throw new BusinessValidationException("Escolha uma forma de pagamento válida.");
         if (request.UnitPrice <= 0 || !IsMoney(request.UnitPrice))
             throw new BusinessValidationException("Informe um valor do produto maior que zero, com até duas casas decimais.");
 
-        var customer = await customerRepository.GetByIdAsync(accountId, ProductModule.Sales, request.CustomerId, cancellationToken)
-            ?? throw new BusinessValidationException("O cliente selecionado não foi encontrado.");
-        var product = await productRepository.GetByIdAsync(accountId, request.ProductId, cancellationToken)
-            ?? throw new BusinessValidationException("O produto selecionado não foi encontrado.");
-        var sale = request.PaymentType == SalePaymentType.Cash
-            ? Sale.CreateCash(accountId, customer.Id, product.Id, request.UnitPrice)
-            : CreateInstallmentSale(accountId, request);
-        await saleRepository.AddAsync(sale, cancellationToken);
-        await saleRepository.SaveChangesAsync(cancellationToken);
-        return Map(sale, customer.Name, product, Today());
+        return request.PaymentType == SalePaymentType.Cash
+            ? Sale.CreateCash(accountId, request.CustomerId, request.ProductId, request.UnitPrice)
+            : CreateInstallmentSale(accountId, request, originalDueDate);
     }
+
+    private static bool HasSameTerms(Sale current, Sale draft) =>
+        current.PaymentType == draft.PaymentType && current.Amount == draft.Amount &&
+        (current.UnitPrice ?? current.Amount) == draft.UnitPrice &&
+        (current.DownPaymentAmount ?? 0) == draft.DownPaymentAmount &&
+        current.ScheduledInstallmentCount == draft.ScheduledInstallmentCount &&
+        current.GetInstallmentAmount(1) == draft.GetInstallmentAmount(1) &&
+        current.GetInstallmentAmount(current.ScheduledInstallmentCount) == draft.GetInstallmentAmount(draft.ScheduledInstallmentCount) &&
+        current.DueDate == draft.DueDate;
 
     public async Task<IReadOnlyList<SaleResponse>> GetSalesAsync(Guid accountId, CancellationToken cancellationToken = default)
     {
@@ -119,9 +184,9 @@ public sealed class SalesService(
             sales.Sum(item => item.Amount - item.ReceivedAmount));
     }
 
-    private static Sale CreateInstallmentSale(Guid accountId, SaleCreateRequest request)
+    private static Sale CreateInstallmentSale(Guid accountId, SaleCreateRequest request, DateTime? originalDueDate)
     {
-        if (request.DueDate is { } dueDate && DateOnly.FromDateTime(dueDate) < Today())
+        if (request.DueDate is { } dueDate && dueDate.Date != originalDueDate?.Date && DateOnly.FromDateTime(dueDate) < Today())
             throw new BusinessValidationException("O vencimento da venda não pode estar no passado.");
         if (request.InstallmentCount is not > 0)
             throw new BusinessValidationException("Informe uma quantidade de parcelas maior que zero.");
@@ -170,7 +235,7 @@ public sealed class SalesService(
         var dueDate = sale.GetInstallmentDueDate(number);
         var paid = payment is not null || sale.Status == SaleStatus.Paid;
         return new SaleInstallmentResponse(number, payment?.Amount ?? sale.GetInstallmentAmount(number), dueDate, paid,
-            !paid && dueDate is { } date && date < today, payment?.PaidAtUtc, payment?.PaidByUserId, payment?.PaidByUserName);
+            !paid && dueDate is { } date && date < today, payment?.PaidAtUtc, payment?.PaidByUserId, payment?.PaidByUserName, payment?.Id);
     }
 
     private static SaleResponse Map(Sale sale, DateOnly today) => Map(sale, sale.Customer?.Name ?? "Cliente", sale.Product!, today);
@@ -202,8 +267,10 @@ public sealed class SalesService(
 public interface ISalesService
 {
     Task<ProductResponse> CreateProductAsync(Guid accountId, ProductCreateRequest request, CancellationToken cancellationToken = default);
+    Task<ProductResponse?> UpdateProductAsync(Guid accountId, Guid id, ProductCreateRequest request, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<ProductResponse>> GetProductsAsync(Guid accountId, CancellationToken cancellationToken = default);
     Task<SaleResponse> CreateSaleAsync(Guid accountId, SaleCreateRequest request, CancellationToken cancellationToken = default);
+    Task<SaleResponse?> UpdateSaleAsync(Guid accountId, Guid id, SaleUpdateRequest request, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<SaleResponse>> GetSalesAsync(Guid accountId, CancellationToken cancellationToken = default);
     Task<SaleResponse> MarkAsPaidAsync(Guid accountId, Guid id, CancellationToken cancellationToken = default);
     Task<SaleInstallmentPageResponse?> GetInstallmentsAsync(Guid accountId, Guid id, int page, CancellationToken cancellationToken = default);

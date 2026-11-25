@@ -110,4 +110,34 @@ public sealed class SalesController(ISalesService salesService) : ControllerBase
             return BadRequest(new { message = exception.Message });
         }
     }
+
+    [HttpPut("products/{id:guid}")]
+    public async Task<IActionResult> UpdateProduct(Guid id, ProductCreateRequest request, CancellationToken cancellationToken)
+    {
+        if (!User.HasModule("Sales")) return Forbid();
+        try
+        {
+            var updated = await salesService.UpdateProductAsync(AccountId, id, request, cancellationToken);
+            return updated is null ? NotFound(new { message = "Registro não encontrado ou desativado." }) : Ok(updated);
+        }
+        catch (BusinessValidationException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
+
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> UpdateSale(Guid id, SaleUpdateRequest request, CancellationToken cancellationToken)
+    {
+        if (!User.HasModule("Sales")) return Forbid();
+        try
+        {
+            var updated = await salesService.UpdateSaleAsync(AccountId, id, request, cancellationToken);
+            return updated is null ? NotFound(new { message = "Registro não encontrado ou desativado." }) : Ok(updated);
+        }
+        catch (BusinessValidationException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
 }

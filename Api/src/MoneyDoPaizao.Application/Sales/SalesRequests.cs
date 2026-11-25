@@ -16,6 +16,16 @@ public sealed record SaleCreateRequest(
     int? InstallmentCount,
     decimal? InstallmentAmount);
 
+public sealed record SaleUpdateRequest(
+    Guid CustomerId,
+    Guid ProductId,
+    SalePaymentType? PaymentType,
+    DateTime? DueDate,
+    decimal? UnitPrice,
+    decimal? DownPaymentAmount,
+    int? InstallmentCount,
+    decimal? InstallmentAmount);
+
 public sealed record SaleResponse(
     Guid Id,
     Guid CustomerId,
@@ -47,7 +57,8 @@ public sealed record SaleInstallmentResponse(
     bool IsOverdue,
     DateTime? PaidAtUtc,
     Guid? PaidByUserId,
-    string? PaidByUserName);
+    string? PaidByUserName,
+    Guid? PaymentId);
 
 public sealed record SaleInstallmentPageResponse(SaleResponse Sale, int Page, int TotalPages, IReadOnlyList<SaleInstallmentResponse> Installments);
 

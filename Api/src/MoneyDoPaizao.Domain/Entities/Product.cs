@@ -1,7 +1,13 @@
 namespace MoneyDoPaizao.Domain.Entities;
 
-public sealed class Product
+public sealed class Product : IManagedRecord
 {
+    public DateTime? DeactivatedAtUtc { get; private set; }
+
+    public void Deactivate(DateTime atUtc) => DeactivatedAtUtc ??= atUtc;
+
+    public void Rename(string name) => Name = name.Trim();
+
     private Product()
     {
     }

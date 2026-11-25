@@ -13,7 +13,7 @@ public sealed class SaleRepository(MoneyDoPaizaoDbContext context) : ISaleReposi
             .Include(item => item.Customer)
             .Include(item => item.Product)
             .Include(item => item.InstallmentPayments)
-            .Where(item => item.AccountId == accountId)
+            .Where(item => item.AccountId == accountId && item.DeactivatedAtUtc == null)
             .AsNoTracking()
             .OrderByDescending(item => item.SoldAtUtc)
             .ThenByDescending(item => item.Id)
@@ -27,7 +27,7 @@ public sealed class SaleRepository(MoneyDoPaizaoDbContext context) : ISaleReposi
             .Include(item => item.Product)
             .Include(item => item.InstallmentPayments)
             .AsNoTracking()
-            .SingleOrDefaultAsync(item => item.AccountId == accountId && item.Id == id, cancellationToken);
+            .SingleOrDefaultAsync(item => item.AccountId == accountId && item.DeactivatedAtUtc == null && item.Id == id, cancellationToken);
     }
 
     public async Task<Sale?> RegisterInstallmentPaymentAsync(Guid accountId, Guid id, Func<Sale, SaleInstallmentPayment?> pay, CancellationToken cancellationToken = default)
@@ -35,7 +35,7 @@ public sealed class SaleRepository(MoneyDoPaizaoDbContext context) : ISaleReposi
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
         // Read the ledger after locking the sale so repeated and concurrent requests agree on its balance.
         var sale = await context.Sales
-            .FromSql($"SELECT * FROM sales WHERE account_id = {accountId} AND id = {id} FOR UPDATE")
+            .FromSql($"SELECT * FROM sales WHERE account_id = {accountId} AND id = {id} AND deactivated_at_utc IS NULL FOR UPDATE")
             .SingleOrDefaultAsync(cancellationToken);
         if (sale is null) return null;
 

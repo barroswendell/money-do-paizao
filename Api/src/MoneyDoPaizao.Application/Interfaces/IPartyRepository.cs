@@ -11,7 +11,6 @@ public interface IPartyRepository
     Task<IReadOnlyList<PartyProduct>> GetProductsByIdsAsync(Guid accountId, IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default);
     Task AddProductAsync(PartyProduct product, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<PartyEvent>> GetEventsAsync(Guid accountId, CancellationToken cancellationToken = default);
-    Task<PartyEvent?> GetEventAsync(Guid accountId, Guid id, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<PartyEvent>> GetEventsForDashboardAsync(Guid accountId, CancellationToken cancellationToken = default);
     Task AddEventAsync(PartyEvent partyEvent, CancellationToken cancellationToken = default);
     Task SaveChangesAsync(CancellationToken cancellationToken = default);

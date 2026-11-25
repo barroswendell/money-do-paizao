@@ -106,4 +106,19 @@ public sealed class LoansController(ILoanService loanService) : ControllerBase
 
         throw new BusinessValidationException("Escolha um comprovante em PDF, JPG ou PNG.");
     }
+
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(Guid id, LoanCreateRequest request, CancellationToken cancellationToken)
+    {
+        if (!User.HasModule("Loans")) return Forbid();
+        try
+        {
+            var updated = await loanService.UpdateAsync(AccountId, id, request, cancellationToken);
+            return updated is null ? NotFound(new { message = "Registro não encontrado ou desativado." }) : Ok(updated);
+        }
+        catch (BusinessValidationException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
 }

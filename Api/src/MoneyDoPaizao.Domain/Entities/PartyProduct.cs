@@ -1,7 +1,17 @@
 namespace MoneyDoPaizao.Domain.Entities;
 
-public sealed class PartyProduct
+public sealed class PartyProduct : IManagedRecord
 {
+    public DateTime? DeactivatedAtUtc { get; private set; }
+
+    public void Deactivate(DateTime atUtc) => DeactivatedAtUtc ??= atUtc;
+
+    public void Update(string name, string? notes)
+    {
+        Name = name.Trim();
+        Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+    }
+
     private PartyProduct()
     {
     }

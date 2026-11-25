@@ -6,16 +6,36 @@ using MoneyDoPaizao.Domain.Enums;
 
 namespace MoneyDoPaizao.Application.Services;
 
-public sealed class PersonalFinanceService(IPersonalFinanceRepository repository) : IPersonalFinanceService
+public sealed class PersonalFinanceService(IPersonalFinanceRepository repository, IManagedRecordStore records) : IPersonalFinanceService
 {
     public async Task<FinanceEntryResponse> CreateAsync(Guid accountId, FinanceEntryCreateRequest request, CancellationToken cancellationToken = default)
     {
-        if (request.Amount <= 0)
+        Validate(request);
+        var entry = FinanceEntry.Create(accountId, request.Type, request.Amount, request.EntryDate, request.Category, request.Description);
+        await repository.AddAsync(entry, cancellationToken);
+        await repository.SaveChangesAsync(cancellationToken);
+        return Map(entry);
+    }
+
+    public async Task<FinanceEntryResponse?> UpdateAsync(Guid accountId, Guid id, FinanceEntryCreateRequest request, CancellationToken cancellationToken = default)
+    {
+        var entry = await records.ChangeAsync<FinanceEntry>(accountId, ProductModule.PersonalFinance, id, current =>
+        {
+            Validate(request);
+            current.Update(request.Type, request.Amount, request.EntryDate, request.Category, request.Description);
+            return Task.CompletedTask;
+        }, cancellationToken);
+        return entry is null ? null : Map(entry);
+    }
+
+    private static void Validate(FinanceEntryCreateRequest request)
+    {
+        if (request.Amount <= 0 || request.Amount > 9_999_999_999_999_999.99m || request.Amount != decimal.Round(request.Amount, 2))
         {
             throw new BusinessValidationException("Informe um valor maior que zero.");
         }
 
-        if (string.IsNullOrWhiteSpace(request.Category))
+        if (string.IsNullOrWhiteSpace(request.Category) || request.Category.Trim().Length > 120)
         {
             throw new BusinessValidationException("Informe uma categoria.");
         }
@@ -25,10 +45,10 @@ public sealed class PersonalFinanceService(IPersonalFinanceRepository repository
             throw new BusinessValidationException("Tipo de lançamento inválido.");
         }
 
-        var entry = FinanceEntry.Create(accountId, request.Type, request.Amount, request.EntryDate, request.Category, request.Description);
-        await repository.AddAsync(entry, cancellationToken);
-        await repository.SaveChangesAsync(cancellationToken);
-        return Map(entry);
+        if (request.EntryDate == default)
+            throw new BusinessValidationException("Informe a data do lançamento.");
+        if (request.Description?.Trim().Length > 240)
+            throw new BusinessValidationException("A descrição pode ter até 240 caracteres.");
     }
 
     public async Task<IReadOnlyList<FinanceEntryResponse>> GetEntriesAsync(Guid accountId, CancellationToken cancellationToken = default)
@@ -61,6 +81,7 @@ public sealed class PersonalFinanceService(IPersonalFinanceRepository repository
 public interface IPersonalFinanceService
 {
     Task<FinanceEntryResponse> CreateAsync(Guid accountId, FinanceEntryCreateRequest request, CancellationToken cancellationToken = default);
+    Task<FinanceEntryResponse?> UpdateAsync(Guid accountId, Guid id, FinanceEntryCreateRequest request, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<FinanceEntryResponse>> GetEntriesAsync(Guid accountId, CancellationToken cancellationToken = default);
     Task<PersonalFinanceSummaryResponse> GetSummaryAsync(Guid accountId, CancellationToken cancellationToken = default);
 }

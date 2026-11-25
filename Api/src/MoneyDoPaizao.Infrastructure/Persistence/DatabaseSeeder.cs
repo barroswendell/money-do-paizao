@@ -23,6 +23,7 @@ public static class DatabaseSeeder
             createdApplicationTables = true;
         }
         await EnsureApplicationSchemaAsync(context, cancellationToken);
+        await ManagedRecordsSchema.ApplyAsync(context, cancellationToken);
 
         if (!bool.TryParse(configuration["AdminSeed:Enabled"], out var seedEnabled) || !seedEnabled)
         {

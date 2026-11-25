@@ -12,6 +12,15 @@ public sealed class PartyEventProduct
     public string ProductName { get; private set; } = string.Empty;
     public decimal Amount { get; private set; }
     public bool IsGift { get; private set; }
+    public DateTime? DeactivatedAtUtc { get; private set; }
+
+    public void Deactivate(DateTime atUtc) => DeactivatedAtUtc ??= atUtc;
+
+    public void Update(decimal amount, bool isGift)
+    {
+        Amount = isGift ? 0 : amount;
+        IsGift = isGift;
+    }
 
     public static PartyEventProduct Create(PartyProduct product, decimal amount, bool isGift) => new()
     {

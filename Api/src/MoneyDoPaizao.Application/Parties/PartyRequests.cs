@@ -10,7 +10,7 @@ public sealed record PartyProductCreateRequest(string Name, string? Notes);
 
 public sealed record PartyProductResponse(Guid Id, string Name, string? Notes);
 
-public sealed record PartyEventProductRequest(Guid ProductId, decimal Amount, bool IsGift);
+public sealed record PartyEventProductRequest(Guid ProductId, decimal Amount, bool IsGift, Guid? Id = null);
 
 public sealed record PartyEventProductResponse(Guid Id, Guid ProductId, string ProductName, decimal Amount, bool IsGift);
 

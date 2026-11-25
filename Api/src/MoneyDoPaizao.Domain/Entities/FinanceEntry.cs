@@ -2,8 +2,21 @@ using MoneyDoPaizao.Domain.Enums;
 
 namespace MoneyDoPaizao.Domain.Entities;
 
-public sealed class FinanceEntry
+public sealed class FinanceEntry : IManagedRecord
 {
+    public DateTime? DeactivatedAtUtc { get; private set; }
+
+    public void Deactivate(DateTime atUtc) => DeactivatedAtUtc ??= atUtc;
+
+    public void Update(FinanceEntryType type, decimal amount, DateTime entryDate, string category, string? description)
+    {
+        Type = type;
+        Amount = amount;
+        EntryDate = DateTime.SpecifyKind(entryDate.Date, DateTimeKind.Unspecified);
+        Category = category.Trim();
+        Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+    }
+
     private FinanceEntry()
     {
     }
@@ -18,11 +31,7 @@ public sealed class FinanceEntry
     {
         Id = Guid.NewGuid();
         AccountId = accountId;
-        Type = type;
-        Amount = amount;
-        EntryDate = entryDate.Date;
-        Category = category.Trim();
-        Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        Update(type, amount, entryDate, category, description);
         CreatedAtUtc = DateTime.UtcNow;
     }
 

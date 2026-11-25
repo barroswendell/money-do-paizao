@@ -42,4 +42,19 @@ public sealed class PersonalFinanceController(IPersonalFinanceService financeSer
             return BadRequest(new { message = exception.Message });
         }
     }
+
+    [HttpPut("entries/{id:guid}")]
+    public async Task<IActionResult> Update(Guid id, FinanceEntryCreateRequest request, CancellationToken cancellationToken)
+    {
+        if (!User.HasModule("PersonalFinance")) return Forbid();
+        try
+        {
+            var updated = await financeService.UpdateAsync(AccountId, id, request, cancellationToken);
+            return updated is null ? NotFound(new { message = "Registro não encontrado ou desativado." }) : Ok(updated);
+        }
+        catch (BusinessValidationException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
 }
