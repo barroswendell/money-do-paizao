@@ -47,6 +47,7 @@ export type Loan = {
   status: 'Active' | 'Paid';
   paidInterest: number;
   payments: LoanPayment[];
+  notes?: string | null;
 };
 
 export type LoanPayment = {
@@ -83,6 +84,7 @@ export type PartyProduct = {
 };
 
 export type PartyEventProductInput = {
+  id?: string;
   productId: string;
   amount: number;
   isGift: boolean;
@@ -177,6 +179,7 @@ export type Sale = {
 };
 
 export type SaleInstallment = {
+  paymentId?: string | null;
   number: number;
   amount: number;
   dueDate?: string | null;
@@ -291,12 +294,8 @@ export function getCustomers(token: string) {
   });
 }
 
-export function createCustomer(token: string, payload: Pick<Customer, 'name' | 'hasReferral' | 'referral'> & { phone: string }) {
-  return request<Customer>('/customers', {
-    method: 'POST',
-    headers: authHeaders(token),
-    body: JSON.stringify(payload),
-  });
+export function saveCustomer(token: string, payload: Pick<Customer, 'name' | 'hasReferral' | 'referral'> & { phone: string }, id?: string) {
+  return saveRecord<Customer>(token, '/customers', payload, id);
 }
 
 export function getLoans(token: string) {
@@ -306,18 +305,15 @@ export function getLoans(token: string) {
   });
 }
 
-export function createLoan(token: string, payload: {
+export function saveLoan(token: string, payload: {
   customerId: string;
   principalAmount: number;
   dueDay: number;
   monthlyInterestRatePercent: number;
   lateDailyInterestRatePercent: number;
-}) {
-  return request<Loan>('/loans', {
-    method: 'POST',
-    headers: authHeaders(token),
-    body: JSON.stringify(payload),
-  });
+  notes?: string;
+}, id?: string) {
+  return saveRecord<Loan>(token, '/loans', payload, id);
 }
 
 export function registerLoanPayment(token: string, loanId: string, type: LoanPaymentType, requestId: string, receipt: DocumentPickerAsset | null) {
@@ -378,31 +374,23 @@ export function getPartyThemes(token: string) {
   return request<PartyTheme[]>('/parties/themes', { method: 'GET', headers: authHeaders(token) });
 }
 
-export function createPartyTheme(token: string, payload: { name: string; description?: string }) {
-  return request<PartyTheme>('/parties/themes', {
-    method: 'POST',
-    headers: authHeaders(token),
-    body: JSON.stringify(payload),
-  });
+export function savePartyTheme(token: string, payload: { name: string; description?: string }, id?: string) {
+  return saveRecord<PartyTheme>(token, '/parties/themes', payload, id);
 }
 
 export function getPartyProducts(token: string) {
   return request<PartyProduct[]>('/parties/products', { method: 'GET', headers: authHeaders(token) });
 }
 
-export function createPartyProduct(token: string, payload: { name: string; notes?: string }) {
-  return request<PartyProduct>('/parties/products', {
-    method: 'POST',
-    headers: authHeaders(token),
-    body: JSON.stringify(payload),
-  });
+export function savePartyProduct(token: string, payload: { name: string; notes?: string }, id?: string) {
+  return saveRecord<PartyProduct>(token, '/parties/products', payload, id);
 }
 
 export function getPartyEvents(token: string) {
   return request<PartyEvent[]>('/parties/events', { method: 'GET', headers: authHeaders(token) });
 }
 
-export function createPartyEvent(token: string, payload: {
+export function savePartyEvent(token: string, payload: {
   customerId: string;
   themeId?: string | null;
   eventDate: string;
@@ -412,12 +400,8 @@ export function createPartyEvent(token: string, payload: {
   receivedAmount?: number;
   notes?: string;
   products?: PartyEventProductInput[];
-}) {
-  return request<PartyEvent>('/parties/events', {
-    method: 'POST',
-    headers: authHeaders(token),
-    body: JSON.stringify(payload),
-  });
+}, id?: string) {
+  return saveRecord<PartyEvent>(token, '/parties/events', payload, id);
 }
 
 export function updatePartyReceivedAmount(token: string, eventId: string, receivedAmount: number) {
@@ -436,18 +420,14 @@ export function getFinanceEntries(token: string) {
   return request<FinanceEntry[]>('/personal-finance/entries', { method: 'GET', headers: authHeaders(token) });
 }
 
-export function createFinanceEntry(token: string, payload: {
+export function saveFinanceEntry(token: string, payload: {
   type: FinanceEntryType;
   amount: number;
   entryDate: string;
   category: string;
   description?: string;
-}) {
-  return request<FinanceEntry>('/personal-finance/entries', {
-    method: 'POST',
-    headers: authHeaders(token),
-    body: JSON.stringify(payload),
-  });
+}, id?: string) {
+  return saveRecord<FinanceEntry>(token, '/personal-finance/entries', payload, id);
 }
 
 export function getSalesDashboard(token: string) {
@@ -458,33 +438,32 @@ export function getProducts(token: string) {
   return request<Product[]>('/sales/products', { method: 'GET', headers: authHeaders(token) });
 }
 
-export function createProduct(token: string, payload: { name: string }) {
-  return request<Product>('/sales/products', {
-    method: 'POST',
-    headers: authHeaders(token),
-    body: JSON.stringify(payload),
-  });
+export function saveProduct(token: string, payload: { name: string }, id?: string) {
+  return saveRecord<Product>(token, '/sales/products', payload, id);
 }
 
 export function getSales(token: string) {
   return request<Sale[]>('/sales', { method: 'GET', headers: authHeaders(token) });
 }
 
-export function createSale(token: string, payload: {
+type SaleReferences = {
   customerId: string;
   productId: string;
+};
+
+type SaleDraft = SaleReferences & {
   paymentType: Sale['paymentType'];
   unitPrice: number;
   downPaymentAmount?: number;
   installmentCount?: number;
   installmentAmount?: number;
   dueDate?: string | null;
-}) {
-  return request<Sale>('/sales', {
-    method: 'POST',
-    headers: authHeaders(token),
-    body: JSON.stringify(payload),
-  });
+};
+
+export function saveSale(token: string, payload: SaleDraft, id?: string): Promise<Sale>;
+export function saveSale(token: string, payload: SaleReferences, id: string): Promise<Sale>;
+export function saveSale(token: string, payload: SaleDraft | SaleReferences, id?: string) {
+  return saveRecord<Sale>(token, '/sales', payload, id);
 }
 
 export function getSaleInstallments(token: string, saleId: string, page: number) {
@@ -493,4 +472,41 @@ export function getSaleInstallments(token: string, saleId: string, page: number)
 
 export function paySaleInstallment(token: string, saleId: string, number: number) {
   return request<SaleInstallmentPage>(`/sales/${saleId}/installments/${number}/pay`, { method: 'POST', headers: authHeaders(token) });
+}
+
+function saveRecord<T>(token: string, collection: string, payload: object, id?: string) {
+  return request<T>(id ? `${collection}/${encodeURIComponent(id)}` : collection, {
+    method: id ? 'PUT' : 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+}
+
+export type RecordKind = 'Customer' | 'Loan' | 'PartyEvent' | 'PartyTheme' | 'PartyProduct' | 'Sale' | 'Product' | 'FinanceEntry';
+
+type AuditValue = string | number | boolean | null;
+
+export type HistoryEntry = {
+  id: string;
+  kind: RecordKind;
+  recordId: string;
+  recordName: string;
+  userId: string;
+  userName: string;
+  occurredAtUtc: string;
+  action: 'Created' | 'Edited' | 'Deactivated' | 'ItemAdded' | 'ItemEdited' | 'ItemDeactivated' | 'PaymentRegistered';
+  changes: { field: string; before: AuditValue; after: AuditValue }[];
+};
+
+type HistoryPage = { items: HistoryEntry[]; page: number; hasMore: boolean };
+
+export function getRecordHistory(token: string, page: number, kind?: RecordKind, recordId?: string) {
+  const query = new URLSearchParams({ page: String(page) });
+  if (kind) query.set('kind', kind);
+  if (recordId) query.set('recordId', recordId);
+  return request<HistoryPage>(`/records/history?${query.toString()}`, { method: 'GET', headers: authHeaders(token) });
+}
+
+export function deactivateRecord(token: string, kind: RecordKind, id: string) {
+  return request<void>(`/records/${kind}/${encodeURIComponent(id)}`, { method: 'DELETE', headers: authHeaders(token) });
 }

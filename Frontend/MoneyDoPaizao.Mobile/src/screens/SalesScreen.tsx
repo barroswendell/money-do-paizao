@@ -4,16 +4,18 @@ import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { Check, ChevronDown, ChevronRight, CircleDollarSign, ShoppingBag } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { DatePickerField } from '../components/DatePickerField';
+import { RecordActions } from '../components/RecordActions';
+import { useRecordEditor } from '../lib/use-record-editor';
 import { SaleDetailsModal } from '../components/SaleDetailsModal';
 import { Button, ButtonText } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { FieldLabel, fieldControl, Input } from '../components/ui/input';
 import { FormToggle, ScreenHeader } from '../components/ui/screen-header';
 import { Text } from '../components/ui/text';
-import { formatCurrency, formatDate, parseMoneyCents } from '../lib/format';
+import { formatCurrency, formatDate, formatMoneyInput, parseMoneyCents } from '../lib/format';
 import { calculateInstallments, parseInstallmentCount } from '../lib/saleAmounts';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { createSale, getCustomers, getProducts, getSales, type Customer, type Product, type Sale } from '../services/api';
+import { saveSale, getCustomers, getProducts, getSales, type Customer, type Product, type Sale } from '../services/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Sales'>;
 type Choice = { id: string; name: string };
@@ -69,9 +71,8 @@ export function SalesScreen({ navigation, route }: Props) {
   const [sales, setSales] = useState<Sale[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [formOpen, setFormOpen] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<Choice | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Choice | null>(null);
   const [openPicker, setOpenPicker] = useState<'customer' | 'product' | null>(null);
   const [paymentType, setPaymentType] = useState<Sale['paymentType']>('Cash');
   const [unitPrice, setUnitPrice] = useState('');
@@ -87,6 +88,28 @@ export function SalesScreen({ navigation, route }: Props) {
   const [filterProduct, setFilterProduct] = useState<Choice>(allProducts);
   const [filterProductOpen, setFilterProductOpen] = useState(false);
   const [detailSaleId, setDetailSaleId] = useState<string | null>(null);
+  const editor = useRecordEditor<Sale>((record) => {
+    setSelectedCustomer(record ? { id: record.customerId, name: record.customerName } : null);
+    setSelectedProduct(record ? { id: record.productId, name: record.productName } : null);
+    setOpenPicker(null);
+    setPaymentType(record?.paymentType ?? 'Cash');
+    setUnitPrice(record ? formatMoneyInput(record.unitPrice) : '');
+    setHasDownPayment(!!record?.downPaymentAmount);
+    setDownPayment(record?.downPaymentAmount ? formatMoneyInput(record.downPaymentAmount) : '');
+    setCount(record?.scheduledInstallmentCount ? String(record.scheduledInstallmentCount) : '');
+    const automatic = record?.scheduledInstallmentCount ? calculateInstallments(
+      Math.round(record.unitPrice * 100), Math.round(record.downPaymentAmount * 100), record.scheduledInstallmentCount, null,
+    ) : null;
+    const installment = record?.installmentAmount;
+    const last = record?.lastInstallmentAmount ?? installment;
+    const isAutomatic = automatic && installment != null && last != null &&
+      automatic.installment === Math.round(installment * 100) && automatic.lastInstallment === Math.round(last * 100);
+    setInstallmentAmount(installment != null && !isAutomatic ? formatMoneyInput(installment) : '');
+    setDueDate(record?.dueDate?.slice(0, 10) ?? '');
+    setError('');
+  });
+  const lockedSale = editor.record?.paymentType === 'Installment' &&
+    (editor.record.paidInstallmentCount > 0 || editor.record.status === 'Paid') ? editor.record : null;
 
   const isInstallment = paymentType === 'Installment';
   const unitPriceCents = parseMoneyCents(unitPrice);
@@ -119,63 +142,49 @@ export function SalesScreen({ navigation, route }: Props) {
       .finally(() => setLoading(false));
   }, [token]);
 
-  function resetForm() {
-    setSelectedCustomer(null);
-    setSelectedProduct(null);
-    setOpenPicker(null);
-    setPaymentType('Cash');
-    setUnitPrice('');
-    setHasDownPayment(false);
-    setDownPayment('');
-    setCount('');
-    setInstallmentAmount('');
-    setDueDate('');
-    setFormOpen(false);
-  }
 
-  async function handleCreate() {
+  async function handleSave() {
+    if (saving) return;
     setError('');
     if (!selectedCustomer || !selectedProduct) {
       setError('Selecione o cliente e o produto.');
       return;
     }
-    if (!unitPriceCents) {
-      setError('Informe um valor do produto maior que zero, com até duas casas decimais.');
-      return;
-    }
-    if (isInstallment) {
-      if (!validDownPayment || downPaymentCents >= unitPriceCents) {
+
+    if (!lockedSale) {
+      if (!unitPriceCents) {
+        setError('Informe um valor do produto maior que zero, com até duas casas decimais.');
+        return;
+      }
+      if (isInstallment && (!validDownPayment || downPaymentCents >= unitPriceCents)) {
         setError('Informe uma entrada maior que zero e menor que o valor do produto.');
         return;
       }
-      if (!installmentCount) {
-        setError('Informe uma quantidade de parcelas maior que zero.');
-        return;
-      }
-      if (!quote) {
+      if (isInstallment && (!installmentCount || !quote)) {
         setError('Confira o valor e a quantidade de parcelas.');
         return;
       }
     }
 
+    const references = { customerId: selectedCustomer.id, productId: selectedProduct.id };
     try {
       setSaving(true);
-      const sale = await createSale(token, {
-        customerId: selectedCustomer.id,
-        productId: selectedProduct.id,
+      const sale = lockedSale ? await saveSale(token, references, lockedSale.id) : await saveSale(token, {
+        ...references,
         paymentType,
-        unitPrice: unitPriceCents / 100,
+        unitPrice: (unitPriceCents ?? 0) / 100,
         ...(isInstallment ? {
           dueDate: dueDate || null,
           downPaymentAmount: (downPaymentCents ?? 0) / 100,
           installmentCount: installmentCount ?? undefined,
           installmentAmount: manualInstallmentCents === null ? undefined : manualInstallmentCents / 100,
         } : {}),
-      });
-      setSales((current) => [sale, ...current]);
-      resetForm();
+      }, editor.record?.id);
+      if (editor.record) updateSale(sale);
+      else setSales((current) => [sale, ...current]);
+      editor.close();
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Não foi possível registrar a venda.');
+      setError(exception instanceof Error ? exception.message : 'Não foi possível salvar a venda.');
     } finally {
       setSaving(false);
     }
@@ -186,80 +195,89 @@ export function SalesScreen({ navigation, route }: Props) {
       <ScreenHeader
         title="Vendas"
         onBack={() => navigation.goBack()}
-        actions={<FormToggle label="Nova venda" open={formOpen} onPress={() => setFormOpen((current) => !current)} disabled={saving || loading} />}
+        actions={<FormToggle label="Nova venda" open={editor.open} onPress={editor.toggle} disabled={saving || loading} />}
       />
 
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={editor.scrollRef} className="flex-1" contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled">
         <View className="mx-auto w-full max-w-2xl">
-          {formOpen ? (
+          {editor.open ? (
             <Card className="mb-5 p-5">
-              <Text className="mb-4 text-[18px] font-extrabold text-foreground">Nova venda</Text>
+              <Text className="mb-4 text-[18px] font-extrabold text-foreground">{editor.record ? 'Editar venda' : 'Nova venda'}</Text>
               <SalePicker label="Cliente" placeholder="Selecione um cliente" emptyLabel="Cadastre um cliente primeiro." options={customers} selected={selectedCustomer} open={openPicker === 'customer'} onToggle={() => setOpenPicker(openPicker === 'customer' ? null : 'customer')} onSelect={(customer) => { setSelectedCustomer(customer); setOpenPicker(null); }} />
               <SalePicker label="Produto" placeholder="Selecione um produto" emptyLabel="Cadastre um produto primeiro." options={products} selected={selectedProduct} open={openPicker === 'product'} onToggle={() => setOpenPicker(openPicker === 'product' ? null : 'product')} onSelect={(product) => { setSelectedProduct(product); setOpenPicker(null); }} />
 
-              <FieldLabel>Valor do produto</FieldLabel>
-              <Input accessibilityLabel="Valor do produto" className="mb-4" keyboardType="decimal-pad" onChangeText={setUnitPrice} placeholder="Ex.: 1.000,00" value={unitPrice} />
+              {lockedSale ? (
+                <View className="mb-4 gap-2 rounded-xl border border-border bg-input p-3.5">
+                  <Text className="text-sm font-semibold">Total da venda {formatCurrency(lockedSale.amount)}</Text>
+                  <Text className="text-sm text-muted">Já há pagamento registrado. Você pode corrigir o cliente ou o produto.</Text>
+                </View>
+              ) : (
+                <>
+                  <FieldLabel>Valor do produto</FieldLabel>
+                  <Input accessibilityLabel="Valor do produto" className="mb-4" keyboardType="decimal-pad" onChangeText={setUnitPrice} placeholder="Ex.: 1.000,00" value={unitPrice} />
 
-              <Text className="mb-2 text-[14px] font-bold text-foreground">Forma de pagamento</Text>
-              <View className="mb-4 flex-row gap-2">
-                <Pressable accessibilityRole="radio" accessibilityState={{ checked: !isInstallment }} className={`flex-1 flex-row items-center justify-center rounded-xl border px-3 py-3 ${!isInstallment ? 'border-focus bg-selected' : 'border-border'}`} onPress={() => setPaymentType('Cash')}>
-                  <CircleDollarSign color={colors.success} size={17} />
-                  <Text className="ml-2 text-[14px] font-bold text-foreground">À vista</Text>
-                </Pressable>
-                <Pressable accessibilityRole="radio" accessibilityState={{ checked: isInstallment }} className={`flex-1 flex-row items-center justify-center rounded-xl border px-3 py-3 ${isInstallment ? 'border-focus bg-selected' : 'border-border'}`} onPress={() => setPaymentType('Installment')}>
-                  <ShoppingBag color={colors.foreground} size={17} />
-                  <Text className="ml-2 text-[14px] font-bold text-foreground">Parcelado</Text>
-                </Pressable>
-              </View>
+                  <Text className="mb-2 text-[14px] font-bold text-foreground">Forma de pagamento</Text>
+                  <View className="mb-4 flex-row gap-2">
+                    <Pressable accessibilityRole="radio" accessibilityState={{ checked: !isInstallment }} className={`flex-1 flex-row items-center justify-center rounded-xl border px-3 py-3 ${!isInstallment ? 'border-focus bg-selected' : 'border-border'}`} onPress={() => setPaymentType('Cash')}>
+                      <CircleDollarSign color={colors.success} size={17} />
+                      <Text className="ml-2 text-[14px] font-bold text-foreground">À vista</Text>
+                    </Pressable>
+                    <Pressable accessibilityRole="radio" accessibilityState={{ checked: isInstallment }} className={`flex-1 flex-row items-center justify-center rounded-xl border px-3 py-3 ${isInstallment ? 'border-focus bg-selected' : 'border-border'}`} onPress={() => setPaymentType('Installment')}>
+                      <ShoppingBag color={colors.foreground} size={17} />
+                      <Text className="ml-2 text-[14px] font-bold text-foreground">Parcelado</Text>
+                    </Pressable>
+                  </View>
 
-              {isInstallment ? (
-                <View className="mb-4 gap-4">
-                  <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: hasDownPayment }} className={`${fieldControl} flex-row items-center justify-between gap-2 px-3.5 py-3`} onPress={() => setHasDownPayment((current) => !current)}>
-                    <Text className="text-[14px] font-bold text-foreground">Tem entrada?</Text>
-                    <View className={`h-6 w-6 items-center justify-center rounded-md border ${hasDownPayment ? 'border-focus bg-primary' : 'border-border'}`}>
-                      {hasDownPayment ? <Check color={colors.primaryForeground} size={16} /> : null}
-                    </View>
-                  </Pressable>
-                  {hasDownPayment ? (
-                    <View>
-                      <FieldLabel>Valor da entrada</FieldLabel>
-                      <Input accessibilityLabel="Valor da entrada" keyboardType="decimal-pad" onChangeText={setDownPayment} placeholder="Ex.: 500,00" value={downPayment} />
+                  {isInstallment ? (
+                    <View className="mb-4 gap-4">
+                      <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: hasDownPayment }} className={`${fieldControl} flex-row items-center justify-between gap-2 px-3.5 py-3`} onPress={() => setHasDownPayment((current) => !current)}>
+                        <Text className="text-[14px] font-bold text-foreground">Tem entrada?</Text>
+                        <View className={`h-6 w-6 items-center justify-center rounded-md border ${hasDownPayment ? 'border-focus bg-primary' : 'border-border'}`}>
+                          {hasDownPayment ? <Check color={colors.primaryForeground} size={16} /> : null}
+                        </View>
+                      </Pressable>
+                      {hasDownPayment ? (
+                        <View>
+                          <FieldLabel>Valor da entrada</FieldLabel>
+                          <Input accessibilityLabel="Valor da entrada" keyboardType="decimal-pad" onChangeText={setDownPayment} placeholder="Ex.: 500,00" value={downPayment} />
+                        </View>
+                      ) : null}
+                      <View>
+                        <FieldLabel>Quantidade de parcelas</FieldLabel>
+                        <Input accessibilityLabel="Quantidade de parcelas" keyboardType="number-pad" onChangeText={setCount} placeholder="Ex.: 4" value={count} />
+                      </View>
+                      <View>
+                        <FieldLabel>Valor de cada parcela (opcional)</FieldLabel>
+                        <Input accessibilityLabel="Valor de cada parcela" keyboardType="decimal-pad" onChangeText={setInstallmentAmount} placeholder={quote && !hasManualAmount ? formatCurrency(quote.installment / 100) : 'Ex.: 125,00'} value={installmentAmount} />
+                        <Text className="mt-1.5 text-[12px] text-muted">Deixe em branco para dividir o valor restante automaticamente.</Text>
+                      </View>
+                      <View>
+                        <FieldLabel>Primeiro vencimento (opcional)</FieldLabel>
+                        <DatePickerField label="Primeiro vencimento" value={dueDate} onChange={setDueDate} />
+                      </View>
                     </View>
                   ) : null}
-                  <View>
-                    <FieldLabel>Quantidade de parcelas</FieldLabel>
-                    <Input accessibilityLabel="Quantidade de parcelas" keyboardType="number-pad" onChangeText={setCount} placeholder="Ex.: 4" value={count} />
-                  </View>
-                  <View>
-                    <FieldLabel>Valor de cada parcela (opcional)</FieldLabel>
-                    <Input accessibilityLabel="Valor de cada parcela" keyboardType="decimal-pad" onChangeText={setInstallmentAmount} placeholder={quote && !hasManualAmount ? formatCurrency(quote.installment / 100) : 'Ex.: 125,00'} value={installmentAmount} />
-                    <Text className="mt-1.5 text-[12px] text-muted">Deixe em branco para dividir o valor restante automaticamente.</Text>
-                  </View>
-                  <View>
-                    <FieldLabel>Primeiro vencimento (opcional)</FieldLabel>
-                    <DatePickerField label="Primeiro vencimento" value={dueDate} onChange={setDueDate} />
-                  </View>
-                </View>
-              ) : null}
 
-              {totalCents ? (
-                <View className="mb-4 rounded-xl border border-border bg-input p-3.5">
-                  <View className="flex-row items-center justify-between">
-                    <Text className="text-[14px] font-bold text-foreground">Total da venda</Text>
-                    <Text className="text-[18px] font-extrabold text-foreground">{formatCurrency(totalCents / 100)}</Text>
-                  </View>
-                  {quote && installmentCount ? (
-                    <Text className="mt-1 text-[12px] text-muted">
-                      {hasDownPayment && downPaymentCents ? `Entrada de ${formatCurrency(downPaymentCents / 100)} + ` : ''}
-                      {formatInstallments(installmentCount, quote.installment / 100, quote.lastInstallment / 100)}
-                    </Text>
+                  {totalCents ? (
+                    <View className="mb-4 rounded-xl border border-border bg-input p-3.5">
+                      <View className="flex-row items-center justify-between">
+                        <Text className="text-[14px] font-bold text-foreground">Total da venda</Text>
+                        <Text className="text-[18px] font-extrabold text-foreground">{formatCurrency(totalCents / 100)}</Text>
+                      </View>
+                      {quote && installmentCount ? (
+                        <Text className="mt-1 text-[12px] text-muted">
+                          {hasDownPayment && downPaymentCents ? `Entrada de ${formatCurrency(downPaymentCents / 100)} + ` : ''}
+                          {formatInstallments(installmentCount, quote.installment / 100, quote.lastInstallment / 100)}
+                        </Text>
+                      ) : null}
+                    </View>
                   ) : null}
-                </View>
-              ) : null}
 
+                </>
+              )}
               {error ? <Text accessibilityLiveRegion="polite" className="mb-3 text-[13px] text-destructive">{error}</Text> : null}
-              <Button accessibilityRole="button" disabled={saving} onPress={handleCreate}>
-                <ButtonText>{saving ? 'Salvando...' : 'Registrar venda'}</ButtonText>
+              <Button accessibilityRole="button" disabled={saving} onPress={handleSave}>
+                <ButtonText>{saving ? 'Salvando...' : editor.record ? 'Salvar alterações' : 'Registrar venda'}</ButtonText>
               </Button>
             </Card>
           ) : null}
@@ -276,7 +294,7 @@ export function SalesScreen({ navigation, route }: Props) {
             ))}
           </View>
           <SalePicker label="Filtrar por produto" placeholder={allProducts.name} emptyLabel="Nenhum produto cadastrado." options={[allProducts, ...products]} selected={filterProduct} open={filterProductOpen} onToggle={() => setFilterProductOpen((current) => !current)} onSelect={(product) => { setFilterProduct(product); setFilterProductOpen(false); }} />
-          {!formOpen && error ? <Text className="mb-3 text-[13px] text-destructive">{error}</Text> : null}
+          {!editor.open && error ? <Text className="mb-3 text-[13px] text-destructive">{error}</Text> : null}
           {loading ? <ActivityIndicator color={colors.primary} size="large" /> : null}
           {!visibleSales.length && !loading && !error ? (
             <Card className="items-center p-8">
@@ -286,8 +304,8 @@ export function SalesScreen({ navigation, route }: Props) {
             </Card>
           ) : null}
           {visibleSales.map((sale) => (
-            <Pressable accessibilityLabel={`Detalhes da venda de ${sale.productName} para ${sale.customerName}`} accessibilityRole="button" className="mb-3" key={sale.id} onPress={() => setDetailSaleId(sale.id)}>
-              <Card className="p-4">
+            <Card className="mb-3 p-4" key={sale.id}>
+              <Pressable accessibilityLabel={`Detalhes da venda de ${sale.productName} para ${sale.customerName}`} accessibilityRole="button" onPress={() => setDetailSaleId(sale.id)}>
                 <View className="flex-row items-start justify-between">
                   <View className="flex-1 pr-3">
                     <Text className="text-[16px] font-extrabold text-foreground">{sale.productName}</Text>
@@ -316,8 +334,16 @@ export function SalesScreen({ navigation, route }: Props) {
                     <Text className="text-[12px] font-bold text-foreground">{sale.paidInstallmentCount}/{sale.scheduledInstallmentCount} parcelas pagas</Text>
                   ) : null}
                 </View>
-              </Card>
-            </Pressable>
+              </Pressable>
+              <RecordActions token={token} kind="Sale" id={sale.id} name={sale.productName + ' para ' + sale.customerName} disabled={saving}
+                onEdit={() => editor.show(sale)}
+                onDeleted={() => {
+                  setSales((items) => items.filter((item) => item.id !== sale.id));
+                  if (detailSaleId === sale.id) setDetailSaleId(null);
+                  if (editor.record?.id === sale.id) editor.close();
+                }}
+              />
+            </Card>
           ))}
         </View>
       </ScrollView>

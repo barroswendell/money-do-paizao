@@ -7,9 +7,9 @@ import { Button, ButtonText } from './ui/button';
 import { Card } from './ui/card';
 import { FieldLabel, fieldControl, Input } from './ui/input';
 import { Text } from './ui/text';
-import { formatCurrency, parseMoneyCents } from '../lib/format';
+import { formatCurrency, formatMoneyInput, parseMoneyCents } from '../lib/format';
 import { partyToday } from '../lib/partyMonths';
-import { createPartyEvent, type Customer, type PartyEvent, type PartyProduct, type PartyTheme } from '../services/api';
+import { savePartyEvent, type Customer, type PartyEvent, type PartyProduct, type PartyTheme } from '../services/api';
 
 type Props = {
   token: string;
@@ -17,12 +17,14 @@ type Props = {
   themes: PartyTheme[];
   products: PartyProduct[];
   ready: boolean;
-  onCreate: (event: PartyEvent) => void;
+  initialEvent: PartyEvent | null;
+  onSave: (event: PartyEvent) => void;
+  onSavingChange: (saving: boolean) => void;
   onOpenProducts: () => void;
   onOpenCustomers: () => void;
 };
 
-type ProductLine = { id: number; product: PartyProduct; price: string; isGift: boolean };
+type ProductLine = { id: number; persistedId?: string; product: PartyProduct; price: string; isGift: boolean };
 
 function ChoiceButton({ label, open, onPress }: { label: string; open: boolean; onPress: () => void }) {
   const { colors } = useTheme();
@@ -36,21 +38,26 @@ function ChoiceButton({ label, open, onPress }: { label: string; open: boolean; 
 
 const optionClass = 'rounded-lg px-3 py-3';
 
-export function PartyEventForm({ token, customers, themes, products, ready, onCreate, onOpenProducts, onOpenCustomers }: Props) {
+export function PartyEventForm({ token, customers, themes, products, ready, initialEvent, onSave, onSavingChange, onOpenProducts, onOpenCustomers }: Props) {
   const { colors } = useTheme();
-  const [customer, setCustomer] = useState<Customer | null>(null);
-  const [theme, setTheme] = useState<PartyTheme | null>(null);
+  const [customer, setCustomer] = useState<Pick<Customer, 'id' | 'name'> | null>(() => initialEvent ?
+    { id: initialEvent.customerId, name: initialEvent.customerName } : null);
+  const [theme, setTheme] = useState<Pick<PartyTheme, 'id' | 'name'> | null>(() => initialEvent?.themeId ?
+    { id: initialEvent.themeId, name: initialEvent.themeName ?? 'Tema' } : null);
   const [picker, setPicker] = useState<'customer' | 'theme' | 'product' | null>(null);
-  const [eventDate, setEventDate] = useState('');
-  const [baseAmount, setBaseAmount] = useState('');
-  const [depositAmount, setDepositAmount] = useState('');
-  const [receivedAmount, setReceivedAmount] = useState('');
-  const [notes, setNotes] = useState('');
-  const [lines, setLines] = useState<ProductLine[]>([]);
+  const [eventDate, setEventDate] = useState(initialEvent?.eventDate.slice(0, 10) ?? '');
+  const [baseAmount, setBaseAmount] = useState(initialEvent ? formatMoneyInput(initialEvent.baseAmount) : '');
+  const [depositAmount, setDepositAmount] = useState(initialEvent?.depositAmount ? formatMoneyInput(initialEvent.depositAmount) : '');
+  const [receivedAmount, setReceivedAmount] = useState(initialEvent ? formatMoneyInput(initialEvent.receivedAmount) : '');
+  const [notes, setNotes] = useState(initialEvent?.notes ?? '');
+  const [lines, setLines] = useState<ProductLine[]>(() => (initialEvent?.products ?? []).map((item, index) => ({
+    id: index, persistedId: item.id, product: { id: item.productId, name: item.productName },
+    price: formatMoneyInput(item.amount), isGift: item.isGift,
+  })));
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const submitting = useRef(false);
-  const nextLine = useRef(0);
+  const nextLine = useRef(lines.length);
   const base = baseAmount.trim() ? parseMoneyCents(baseAmount) : 0;
   const parsedLines = lines.map((line) => ({ ...line, cents: line.isGift ? 0 : parseMoneyCents(line.price) }));
   const total = (base ?? 0) + parsedLines.reduce((sum, line) => sum + (line.cents ?? 0), 0);
@@ -90,8 +97,9 @@ export function PartyEventForm({ token, customers, themes, products, ready, onCr
 
     submitting.current = true;
     setSaving(true);
+    onSavingChange(true);
     try {
-      const event = await createPartyEvent(token, {
+      const event = await savePartyEvent(token, {
         customerId: customer.id,
         themeId: theme?.id ?? null,
         eventDate,
@@ -100,20 +108,23 @@ export function PartyEventForm({ token, customers, themes, products, ready, onCr
         depositAmount: deposit / 100,
         receivedAmount: received / 100,
         notes,
-        products: parsedLines.map((line) => ({ productId: line.product.id, amount: (line.cents ?? 0) / 100, isGift: line.isGift })),
-      });
-      onCreate(event);
+        products: parsedLines.map((line) => ({
+          id: line.persistedId, productId: line.product.id, amount: (line.cents ?? 0) / 100, isGift: line.isGift,
+        })),
+      }, initialEvent?.id);
+      onSave(event);
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : 'Não foi possível salvar a festa.');
     } finally {
       submitting.current = false;
       setSaving(false);
+      onSavingChange(false);
     }
   }
 
   return (
     <Card className="mb-6 gap-4 p-5">
-      <Text className="text-lg font-extrabold text-foreground">Nova festa</Text>
+      <Text accessibilityRole="header" className="text-lg font-extrabold text-foreground">{initialEvent ? 'Editar festa' : 'Nova festa'}</Text>
       <View>
         <FieldLabel>Cliente</FieldLabel>
         <ChoiceButton label={customer?.name ?? 'Selecione um cliente'} open={picker === 'customer'} onPress={() => togglePicker('customer')} />
@@ -223,7 +234,7 @@ export function PartyEventForm({ token, customers, themes, products, ready, onCr
       </View>
       {error ? <Text accessibilityRole="alert" className="text-sm text-destructive">{error}</Text> : null}
       <Button accessibilityRole="button" disabled={!ready || saving} onPress={handleSave}>
-        <ButtonText>{saving ? 'Salvando...' : past ? 'Registrar festa realizada' : 'Agendar festa'}</ButtonText>
+          <ButtonText>{saving ? 'Salvando...' : initialEvent ? 'Salvar alterações' : past ? 'Registrar festa realizada' : 'Agendar festa'}</ButtonText>
       </Button>
     </Card>
   );

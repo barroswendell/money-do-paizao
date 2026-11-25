@@ -5,6 +5,15 @@ export function formatCurrency(value: number) {
   }).format(value);
 }
 
+export function formatMoneyInput(value: number) {
+  return value.toFixed(2).replace('.', ',');
+}
+
+export function localDateInput(date = new Date()) {
+  return [date.getFullYear(), date.getMonth() + 1, date.getDate()]
+    .map((part) => String(part).padStart(2, '0')).join('-');
+}
+
 export function parseMoneyCents(input: string): number | null {
   const value = input.trim();
   const isGrouped = /^\d{1,3}(\.\d{3})+(,\d{0,2})?$/.test(value);

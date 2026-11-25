@@ -1,4 +1,4 @@
-import { ArrowLeftRight, LayoutDashboard, LogOut, Menu, X } from 'lucide-react-native';
+import { ArrowLeftRight, History, LayoutDashboard, LogOut, Menu, X } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { Modal, Pressable, ScrollView, View } from 'react-native';
 import { BrandMark } from '../brand/BrandMark';
@@ -25,15 +25,17 @@ type MenuProps = {
   title: string;
   items: MenuItem[];
   onClose: () => void;
+  onHistory: () => void;
   onSwitch: () => void;
   onSignOut: () => void;
 };
 
-export function ModuleMenu({ title, items, onClose, onSwitch, onSignOut }: MenuProps) {
+export function ModuleMenu({ title, items, onClose, onHistory, onSwitch, onSignOut }: MenuProps) {
   const { colors } = useTheme();
   const rows: (MenuItem & { current?: boolean })[] = [
     { label: 'Visão geral', icon: LayoutDashboard, action: onClose, current: true },
     ...items,
+    { label: 'Histórico', icon: History, action: onHistory },
     { label: 'Trocar de módulo', icon: ArrowLeftRight, action: onSwitch },
   ];
 

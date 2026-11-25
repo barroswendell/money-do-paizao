@@ -4,13 +4,15 @@ import { ActivityIndicator, ScrollView, Switch, View } from 'react-native';
 import { UsersRound } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Button, ButtonText } from '../components/ui/button';
+import { RecordActions } from '../components/RecordActions';
+import { useRecordEditor } from '../lib/use-record-editor';
 import { Card } from '../components/ui/card';
 import { FieldLabel, Input } from '../components/ui/input';
 import { FormToggle, ScreenHeader } from '../components/ui/screen-header';
 import { Text } from '../components/ui/text';
 import { formatPhone } from '../lib/format';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { createCustomer, getCustomers, type Customer } from '../services/api';
+import { saveCustomer, getCustomers, type Customer } from '../services/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Customers'>;
 
@@ -18,7 +20,6 @@ export function CustomersScreen({ navigation, route }: Props) {
   const { colors } = useTheme();
   const { token } = route.params;
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [formOpen, setFormOpen] = useState(false);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [hasReferral, setHasReferral] = useState(false);
@@ -26,6 +27,13 @@ export function CustomersScreen({ navigation, route }: Props) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const editor = useRecordEditor<Customer>((record) => {
+    setName(record?.name ?? '');
+    setPhone(formatPhone(record?.phone ?? ''));
+    setHasReferral(record?.hasReferral ?? false);
+    setReferral(record?.referral ?? '');
+    setError('');
+  });
 
   async function loadCustomers() {
     try {
@@ -42,26 +50,23 @@ export function CustomersScreen({ navigation, route }: Props) {
     loadCustomers();
   }, [token]);
 
-  async function handleCreate() {
+  async function handleSave() {
+    if (saving) return;
     setError('');
-    if (phone.replace(/\D/g, '').length < 10) {
+    if (phone.replace(/\D/g, '').length < 10 && !(editor.record && !editor.record.phone && !phone.trim())) {
       setError('Informe um telefone válido com DDD.');
       return;
     }
 
     try {
       setSaving(true);
-      await createCustomer(token, {
+      await saveCustomer(token, {
         name,
         hasReferral,
         referral: hasReferral ? referral : null,
         phone,
-      });
-      setName('');
-      setPhone('');
-      setReferral('');
-      setHasReferral(false);
-      setFormOpen(false);
+      }, editor.record?.id);
+      editor.close();
       await loadCustomers();
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : 'Não foi possível cadastrar o cliente.');
@@ -75,14 +80,14 @@ export function CustomersScreen({ navigation, route }: Props) {
       <ScreenHeader
         title="Clientes"
         onBack={() => navigation.goBack()}
-        actions={<FormToggle label="Novo cliente" open={formOpen} onPress={() => setFormOpen((current) => !current)} />}
+        actions={<FormToggle label="Novo cliente" open={editor.open} onPress={editor.toggle} disabled={saving} />}
       />
 
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={editor.scrollRef} className="flex-1" contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled">
         <View className="mx-auto w-full max-w-2xl">
-          {formOpen ? (
+          {editor.open ? (
             <Card className="mb-5 p-5">
-              <Text className="mb-4 text-[18px] font-extrabold text-foreground">Novo cliente</Text>
+              <Text className="mb-4 text-[18px] font-extrabold text-foreground">{editor.record ? 'Editar cliente' : 'Novo cliente'}</Text>
 
               <FieldLabel>Nome completo</FieldLabel>
               <Input accessibilityLabel="Nome completo" className="mb-4" onChangeText={setName} placeholder="Nome do cliente" value={name} />
@@ -116,8 +121,8 @@ export function CustomersScreen({ navigation, route }: Props) {
               ) : null}
 
               {error ? <Text className="mb-3 text-[13px] text-destructive">{error}</Text> : null}
-              <Button disabled={saving} onPress={handleCreate}>
-                <ButtonText>{saving ? 'Salvando...' : 'Cadastrar cliente'}</ButtonText>
+              <Button disabled={saving} onPress={handleSave}>
+                <ButtonText>{saving ? 'Salvando...' : editor.record ? 'Salvar alterações' : 'Cadastrar cliente'}</ButtonText>
               </Button>
             </Card>
           ) : null}
@@ -149,6 +154,14 @@ export function CustomersScreen({ navigation, route }: Props) {
                 </View>
 
               </View>
+              <RecordActions
+                token={token} kind="Customer" id={customer.id} name={customer.name} disabled={saving}
+                onEdit={() => editor.show(customer)}
+                onDeleted={() => {
+                  setCustomers((items) => items.filter((item) => item.id !== customer.id));
+                  if (editor.record?.id === customer.id) editor.close();
+                }}
+              />
             </Card>
           )) : null}
         </View>

@@ -14,7 +14,8 @@ import { SalesDashboardScreen } from '../screens/SalesDashboardScreen';
 import { ProductsScreen } from '../screens/ProductsScreen';
 import { SalesScreen } from '../screens/SalesScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
-import type { ProductModule } from '../services/api';
+import { RecordHistoryScreen } from '../screens/RecordHistoryScreen';
+import type { ProductModule, RecordKind } from '../services/api';
 import type { AuthResponse } from '../services/api';
 
 export type RootStackParamList = {
@@ -44,6 +45,7 @@ export type RootStackParamList = {
   Products: { token: string };
   Sales: { token: string };
   Settings: { token: string };
+  RecordHistory: { token: string; kind?: RecordKind; recordId?: string; title?: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -70,6 +72,7 @@ export function AppNavigator({ session }: { session: AuthResponse | null }) {
       <Stack.Screen name="Products" component={ProductsScreen} />
       <Stack.Screen name="Sales" component={SalesScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen name="RecordHistory" component={RecordHistoryScreen} />
     </Stack.Navigator>
   );
 }

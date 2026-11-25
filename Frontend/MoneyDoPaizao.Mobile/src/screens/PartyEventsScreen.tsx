@@ -5,13 +5,14 @@ import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-rea
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { PartyEventForm } from '../components/PartyEventForm';
+import { RecordActions } from '../components/RecordActions';
 import { PartyMonthTotals } from '../components/PartyMonthTotals';
 import { Button, ButtonText } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { FieldLabel, fieldControl, Input } from '../components/ui/input';
 import { FormToggle, ScreenHeader } from '../components/ui/screen-header';
 import { Text } from '../components/ui/text';
-import { formatCurrency, parseMoneyCents } from '../lib/format';
+import { formatCurrency, formatMoneyInput, parseMoneyCents } from '../lib/format';
 import { PARTY_MONTH_NAMES, emptyPartyMonth, partyMonthLabel, partyToday, shiftPartyMonth } from '../lib/partyMonths';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import {
@@ -22,8 +23,9 @@ import {
 type Props = NativeStackScreenProps<RootStackParamList, 'PartyEvents'>;
 type Catalog = { customers: Customer[]; themes: PartyTheme[]; products: PartyProduct[] };
 
-function EventCard({ event, token, today, onUpdate }: {
+function EventCard({ event, token, today, onUpdate, onEdit, onDeleted, formSaving }: {
   event: PartyEvent; token: string; today: string; onUpdate: (event: PartyEvent) => void;
+  onEdit: () => void; onDeleted: () => void; formSaving: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [amount, setAmount] = useState('');
@@ -94,10 +96,13 @@ function EventCard({ event, token, today, onUpdate }: {
           </View>
         </View>
       ) : (
-        <Pressable accessibilityRole="button" className="self-start py-2" onPress={() => { setAmount(received.toFixed(2).replace('.', ',')); setError(''); setEditing(true); }}>
+        <Pressable accessibilityRole="button" className="self-start py-2" disabled={formSaving} onPress={() => { setAmount(formatMoneyInput(received)); setError(''); setEditing(true); }}>
           <Text className="text-sm font-bold text-foreground">Atualizar recebimento</Text>
         </Pressable>
       )}
+      <RecordActions token={token} kind="PartyEvent" id={event.id} name={event.customerName} disabled={saving || formSaving}
+        onEdit={() => { setEditing(false); onEdit(); }} onDeleted={onDeleted}
+      />
     </Card>
   );
 }
@@ -109,6 +114,9 @@ export function PartyEventsScreen({ navigation, route }: Props) {
   const [month, setMonth] = useState(initialMonth ?? today.slice(0, 7));
   const [pickerYear, setPickerYear] = useState<number | null>(null);
   const [formOpen, setFormOpen] = useState(!!create);
+  const [editingEvent, setEditingEvent] = useState<PartyEvent | null>(null);
+  const [formSaving, setFormSaving] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
   const [events, setEvents] = useState<PartyEvent[] | null>(null);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [listError, setListError] = useState('');
@@ -117,7 +125,10 @@ export function PartyEventsScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     if (initialMonth) setMonth(initialMonth);
-    if (create) setFormOpen(true);
+    if (create) {
+      setEditingEvent(null);
+      setFormOpen(true);
+    }
   }, [initialMonth, create]);
 
   useFocusEffect(useCallback(() => {
@@ -153,11 +164,18 @@ export function PartyEventsScreen({ navigation, route }: Props) {
     setRefresh((current) => current + 1);
   }
 
-  function handleCreate(event: PartyEvent) {
+  function handleSave(event: PartyEvent) {
     storeEvent(event);
     setMonth(event.eventDate.slice(0, 7));
     setPickerYear(null);
     setFormOpen(false);
+    setEditingEvent(null);
+  }
+
+  function openEdit(event: PartyEvent) {
+    setEditingEvent(event);
+    setFormOpen(true);
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
   }
 
   return (
@@ -165,10 +183,14 @@ export function PartyEventsScreen({ navigation, route }: Props) {
       <ScreenHeader
         title="Agenda de festas"
         onBack={() => navigation.goBack()}
-        actions={<FormToggle label="Nova festa" open={formOpen} onPress={() => setFormOpen((current) => !current)} />}
+        actions={<FormToggle label="Nova festa" open={formOpen} disabled={formSaving} onPress={() => {
+          setEditingEvent(null);
+          setFormOpen((current) => !current);
+          scrollRef.current?.scrollTo({ y: 0, animated: true });
+        }} />}
       />
 
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={scrollRef} className="flex-1" contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled">
         <View className="mx-auto w-full max-w-2xl">
           {formOpen ? (
             <>
@@ -177,8 +199,9 @@ export function PartyEventsScreen({ navigation, route }: Props) {
                   <Text className="text-sm text-destructive">{catalogError} Toque para tentar de novo.</Text>
                 </Pressable>
               ) : null}
-              <PartyEventForm token={token} customers={catalog?.customers ?? []} themes={catalog?.themes ?? []} products={catalog?.products ?? []}
-                ready={!!catalog && !catalogError} onCreate={handleCreate} onOpenProducts={() => navigation.navigate('PartyProducts', { token })}
+              <PartyEventForm key={editingEvent?.id ?? 'new'} token={token} customers={catalog?.customers ?? []}
+                themes={catalog?.themes ?? []} products={catalog?.products ?? []} initialEvent={editingEvent}
+                ready={!!catalog && !catalogError} onSave={handleSave} onSavingChange={setFormSaving} onOpenProducts={() => navigation.navigate('PartyProducts', { token })}
                 onOpenCustomers={() => navigation.navigate('Customers', { token })} />
             </>
           ) : null}
@@ -231,7 +254,18 @@ export function PartyEventsScreen({ navigation, route }: Props) {
                 <PartyMonthTotals month={monthTotals} />
               </View>
               {visibleEvents.length === 0 ? <Card className="p-5"><Text className="text-sm text-muted">Nenhuma festa neste mês.</Text></Card> : null}
-              {visibleEvents.map((event) => <EventCard event={event} key={event.id} onUpdate={storeEvent} today={today} token={token} />)}
+              {visibleEvents.map((event) => (
+                <EventCard event={event} key={event.id} onUpdate={storeEvent} today={today} token={token} formSaving={formSaving}
+                  onEdit={() => openEdit(event)}
+                  onDeleted={() => {
+                    setEvents((items) => items?.filter((item) => item.id !== event.id) ?? null);
+                    if (editingEvent?.id === event.id) {
+                      setEditingEvent(null);
+                      setFormOpen(false);
+                    }
+                  }}
+                />
+              ))}
             </>
           ) : null}
         </View>

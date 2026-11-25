@@ -127,6 +127,7 @@ export function PartyDashboardScreen({ navigation, route }: Props) {
           title="Organização de festas"
           items={menuItems}
           onClose={() => setMenuOpen(false)}
+          onHistory={() => navigation.navigate('RecordHistory', { token })}
           onSwitch={() => navigation.replace('ModuleSelection', { userName, role, token, modules })}
           onSignOut={() => { void clearSession(); resetTheme(); navigation.replace('Login'); }}
         />

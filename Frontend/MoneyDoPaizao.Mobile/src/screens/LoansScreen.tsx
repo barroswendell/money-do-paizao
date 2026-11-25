@@ -6,14 +6,16 @@ import { getDocumentAsync, type DocumentPickerAsset } from 'expo-document-picker
 import { File as LocalFile } from 'expo-file-system';
 import { CheckCircle2, ChevronDown, ChevronUp, Download, HandCoins, History, Paperclip, Percent, X } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RecordActions } from '../components/RecordActions';
+import { useRecordEditor } from '../lib/use-record-editor';
 import { Button, ButtonText } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { FieldLabel, fieldControl, Input } from '../components/ui/input';
 import { FormToggle, ScreenHeader } from '../components/ui/screen-header';
 import { Text } from '../components/ui/text';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { createLoan, downloadLoanPaymentReceipt, getCustomers, getLoans, registerLoanPayment, type Customer, type Loan, type LoanPayment, type LoanPaymentType } from '../services/api';
-import { formatCurrency, formatDate, parseMoneyCents } from '../lib/format';
+import { saveLoan, downloadLoanPaymentReceipt, getCustomers, getLoans, registerLoanPayment, type Customer, type Loan, type LoanPayment, type LoanPaymentType } from '../services/api';
+import { formatCurrency, formatDate, formatMoneyInput, parseMoneyCents } from '../lib/format';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Loans'>;
 type PendingPayment = { loan: Loan; type: LoanPaymentType; requestId: string };
@@ -44,13 +46,13 @@ export function LoansScreen({ navigation, route }: Props) {
   const { token } = route.params;
   const [loans, setLoans] = useState<Loan[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [formOpen, setFormOpen] = useState(route.params.openCreate ?? false);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<Pick<Customer, 'id' | 'name'> | null>(null);
   const [principalAmount, setPrincipalAmount] = useState('');
   const [dueDay, setDueDay] = useState('');
   const [monthlyInterest, setMonthlyInterest] = useState('');
   const [lateDailyInterest, setLateDailyInterest] = useState('');
+  const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -62,6 +64,17 @@ export function LoansScreen({ navigation, route }: Props) {
   const [paymentError, setPaymentError] = useState('');
   const [downloadingPaymentId, setDownloadingPaymentId] = useState('');
   const [downloadError, setDownloadError] = useState<{ paymentId: string; message: string } | null>(null);
+  const editor = useRecordEditor<Loan>((record) => {
+    setSelectedCustomer(record ? { id: record.customerId, name: record.customerName } : null);
+    setPrincipalAmount(record ? formatMoneyInput(record.principalAmount) : '');
+    setDueDay(record ? String(record.dueDay) : '');
+    setMonthlyInterest(record ? String(record.monthlyInterestRatePercent).replace('.', ',') : '');
+    setLateDailyInterest(record ? String(record.lateDailyInterestRatePercent).replace('.', ',') : '');
+    setNotes(record?.notes ?? '');
+    setPickerOpen(false);
+    setError('');
+  }, route.params.openCreate ?? false);
+  const termsLocked = editor.record?.status === 'Paid' || !!editor.record?.payments?.length;
 
   async function loadData() {
     try {
@@ -84,7 +97,8 @@ export function LoansScreen({ navigation, route }: Props) {
     if (receipt) return () => discardPickedReceipt(receipt);
   }, [receipt]);
 
-  async function handleCreate() {
+  async function handleSave() {
+    if (saving) return;
     setError('');
     if (!selectedCustomer) {
       setError('Selecione um cliente.');
@@ -93,19 +107,15 @@ export function LoansScreen({ navigation, route }: Props) {
 
     try {
       setSaving(true);
-      await createLoan(token, {
+      await saveLoan(token, {
         customerId: selectedCustomer.id,
         principalAmount: (parseMoneyCents(principalAmount) ?? 0) / 100,
         dueDay: Number(dueDay),
         monthlyInterestRatePercent: parseNumber(monthlyInterest),
         lateDailyInterestRatePercent: parseNumber(lateDailyInterest),
-      });
-      setSelectedCustomer(null);
-      setPrincipalAmount('');
-      setDueDay('');
-      setMonthlyInterest('');
-      setLateDailyInterest('');
-      setFormOpen(false);
+        notes,
+      }, editor.record?.id);
+      editor.close();
       await loadData();
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : 'Não foi possível cadastrar o empréstimo.');
@@ -183,20 +193,22 @@ export function LoansScreen({ navigation, route }: Props) {
       <ScreenHeader
         title="Empréstimos"
         onBack={() => navigation.goBack()}
-        actions={<FormToggle label="Novo empréstimo" open={formOpen} onPress={() => setFormOpen((current) => !current)} />}
+        actions={<FormToggle label="Novo empréstimo" open={editor.open} onPress={editor.toggle} disabled={saving} />}
       />
 
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={editor.scrollRef} className="flex-1" contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled">
         <View className="mx-auto w-full max-w-2xl">
-          {formOpen ? (
+          {editor.open ? (
             <Card className="mb-5 p-5">
-              <Text className="mb-4 text-[18px] font-extrabold text-foreground">Novo empréstimo</Text>
+              <Text className="mb-4 text-[18px] font-extrabold text-foreground">{editor.record ? 'Editar empréstimo' : 'Novo empréstimo'}</Text>
+              {termsLocked ? <Text className="mb-3 text-sm text-muted">Já há pagamentos neste empréstimo. A observação pode ser atualizada.</Text> : null}
 
               <FieldLabel>Cliente</FieldLabel>
               <Pressable
                 accessibilityLabel="Cliente"
                 accessibilityRole="button"
-                accessibilityState={{ expanded: pickerOpen }}
+                accessibilityState={{ expanded: pickerOpen, disabled: termsLocked }}
+                disabled={termsLocked}
                 className={`${fieldControl} mb-3 flex-row items-center justify-between gap-2 px-3.5 py-3`}
                 onPress={() => setPickerOpen((current) => !current)}
               >
@@ -216,25 +228,29 @@ export function LoansScreen({ navigation, route }: Props) {
               ) : null}
 
               <FieldLabel>Valor do empréstimo</FieldLabel>
-              <Input accessibilityLabel="Valor do empréstimo" className="mb-4" keyboardType="decimal-pad" onChangeText={setPrincipalAmount} placeholder="Ex.: 1.000,00" value={principalAmount} />
+              <Input accessibilityLabel="Valor do empréstimo" editable={!termsLocked} className="mb-4" keyboardType="decimal-pad" onChangeText={setPrincipalAmount} placeholder="Ex.: 1.000,00" value={principalAmount} />
 
               <View className="flex-row flex-wrap gap-x-3">
                 <View className="mb-4 min-w-[140px] flex-1">
                   <FieldLabel>Dia do vencimento</FieldLabel>
-                  <Input accessibilityLabel="Dia do vencimento" keyboardType="number-pad" onChangeText={setDueDay} placeholder="Ex.: 10" value={dueDay} />
+                  <Input accessibilityLabel="Dia do vencimento" editable={!termsLocked} keyboardType="number-pad" onChangeText={setDueDay} placeholder="Ex.: 10" value={dueDay} />
                 </View>
                 <View className="mb-4 min-w-[140px] flex-1">
                   <FieldLabel>Juros mensais (%)</FieldLabel>
-                  <Input accessibilityLabel="Juros mensais (%)" keyboardType="decimal-pad" onChangeText={setMonthlyInterest} placeholder="Ex.: 10" value={monthlyInterest} />
+                  <Input accessibilityLabel="Juros mensais (%)" editable={!termsLocked} keyboardType="decimal-pad" onChangeText={setMonthlyInterest} placeholder="Ex.: 10" value={monthlyInterest} />
                 </View>
               </View>
 
               <FieldLabel>Juros por atraso ao dia (%)</FieldLabel>
-              <Input accessibilityLabel="Juros por atraso ao dia (%)" className="mb-4" keyboardType="decimal-pad" onChangeText={setLateDailyInterest} placeholder="Ex.: 0,5" value={lateDailyInterest} />
+              <Input accessibilityLabel="Juros por atraso ao dia (%)" editable={!termsLocked} className="mb-4" keyboardType="decimal-pad" onChangeText={setLateDailyInterest} placeholder="Ex.: 0,5" value={lateDailyInterest} />
+
+              <FieldLabel>Observações (opcional)</FieldLabel>
+              <Input accessibilityLabel="Observações do empréstimo" className="mb-4" maxLength={500} multiline
+                onChangeText={setNotes} placeholder="Detalhes do empréstimo" textAlignVertical="top" value={notes} />
 
               {error ? <Text className="mb-3 text-[13px] text-destructive">{error}</Text> : null}
-              <Button disabled={saving} onPress={handleCreate}>
-                <ButtonText>{saving ? 'Salvando...' : 'Cadastrar empréstimo'}</ButtonText>
+              <Button disabled={saving} onPress={handleSave}>
+                <ButtonText>{saving ? 'Salvando...' : editor.record ? 'Salvar alterações' : 'Cadastrar empréstimo'}</ButtonText>
               </Button>
             </Card>
           ) : null}
@@ -247,7 +263,7 @@ export function LoansScreen({ navigation, route }: Props) {
             <Text className="text-[13px] font-bold text-muted">{loans.length}</Text>
           </View>
 
-          {!formOpen && error ? <Text className="mb-3 text-[13px] text-destructive">{error}</Text> : null}
+          {!editor.open && error ? <Text className="mb-3 text-[13px] text-destructive">{error}</Text> : null}
           {loading ? <ActivityIndicator color={colors.primary} size="large" /> : null}
           {!loading && loans.length === 0 ? (
             <Card className="items-center p-8">
@@ -293,11 +309,12 @@ export function LoansScreen({ navigation, route }: Props) {
                   </View>
                 </View>
 
+                {loan.notes ? <Text className="mb-4 text-sm text-muted">{loan.notes}</Text> : null}
                 {expandedLoanId === loan.id ? (
                   <View className="mb-4 rounded-xl border border-border bg-background p-4">
                     <View className="mb-3 flex-row items-center">
                       <History color={colors.selectedForeground} size={18} strokeWidth={1.8} />
-                      <Text className="ml-2 text-[14px] font-extrabold text-foreground">Histórico do empréstimo</Text>
+                      <Text className="ml-2 text-[14px] font-extrabold text-foreground">Pagamentos do empréstimo</Text>
                     </View>
                     {paid && fullPayment ? <Text className="mb-3 text-[13px] font-bold text-success">Empréstimo finalizado em {formatDate(fullPayment.paidAtUtc)}</Text> : null}
                     {payments.length === 0 ? <Text className="text-[12px] text-muted">Nenhum pagamento registrado ainda.</Text> : null}
@@ -335,6 +352,14 @@ export function LoansScreen({ navigation, route }: Props) {
                     </Button>
                   </View>
                 ) : null}
+                <RecordActions token={token} kind="Loan" id={loan.id} name={loan.customerName} disabled={saving}
+                  onEdit={() => editor.show(loan)}
+                  onDeleted={() => {
+                    setLoans((items) => items.filter((item) => item.id !== loan.id));
+                    if (expandedLoanId === loan.id) setExpandedLoanId('');
+                    if (editor.record?.id === loan.id) editor.close();
+                  }}
+                />
               </Card>
             );
           }) : null}

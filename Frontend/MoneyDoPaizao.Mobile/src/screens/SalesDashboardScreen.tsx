@@ -85,6 +85,7 @@ export function SalesDashboardScreen({ navigation, route }: Props) {
             { label: 'Configurações', icon: Settings, action: () => navigation.navigate('Settings', { token }) },
           ]}
           onClose={() => setMenuOpen(false)}
+          onHistory={() => navigation.navigate('RecordHistory', { token })}
           onSwitch={() => navigation.replace('ModuleSelection', { userName, role, token, modules })}
           onSignOut={() => { void clearSession(); resetTheme(); navigation.replace('Login'); }}
         />
