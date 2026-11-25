@@ -17,10 +17,12 @@ export function parseMoneyCents(input: string): number | null {
 }
 
 export function formatDate(value: string) {
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
   return new Intl.DateTimeFormat('pt-BR', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
+    timeZone: dateOnly ? 'UTC' : undefined,
   }).format(new Date(value));
 }
 

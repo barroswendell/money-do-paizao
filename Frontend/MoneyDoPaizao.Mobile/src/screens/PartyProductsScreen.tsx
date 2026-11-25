@@ -1,10 +1,11 @@
+import { useTheme } from '../theme/ThemeProvider';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
-import { ArrowLeft } from 'lucide-react-native';
+import { ActivityIndicator, ScrollView, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Button, ButtonText } from '../components/ui/button';
 import { Card } from '../components/ui/card';
-import { Input } from '../components/ui/input';
+import { FieldLabel, Input } from '../components/ui/input';
+import { ScreenHeader } from '../components/ui/screen-header';
 import { Text } from '../components/ui/text';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { createPartyProduct, getPartyProducts, type PartyProduct } from '../services/api';
@@ -12,6 +13,7 @@ import { createPartyProduct, getPartyProducts, type PartyProduct } from '../serv
 type Props = NativeStackScreenProps<RootStackParamList, 'PartyProducts'>;
 
 export function PartyProductsScreen({ navigation, route }: Props) {
+  const { colors } = useTheme();
   const { token } = route.params;
   const [products, setProducts] = useState<PartyProduct[]>([]);
   const [name, setName] = useState('');
@@ -56,36 +58,31 @@ export function PartyProductsScreen({ navigation, route }: Props) {
 
   return (
     <View className="flex-1 bg-background">
-      <View className="flex-row items-center border-b border-border bg-surface px-5 pb-4 pt-5">
-        <Pressable accessibilityRole="button" accessibilityLabel="Voltar" className="mr-3 h-10 w-10 items-center justify-center rounded-xl border border-border" onPress={navigation.goBack}>
-          <ArrowLeft color="#071629" size={19} />
-        </Pressable>
-        <Text className="text-xl font-extrabold text-navy">Produtos de festa</Text>
-      </View>
-      <ScrollView contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled">
+      <ScreenHeader title="Produtos de festa" onBack={() => navigation.goBack()} />
+      <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled">
         <View className="mx-auto w-full max-w-2xl">
           <Card className="mb-5 gap-3 p-5">
-            <Text className="text-lg font-extrabold text-navy">Cadastrar produto</Text>
+            <Text className="text-lg font-extrabold text-foreground">Cadastrar produto</Text>
             <View>
-              <Text className="mb-1.5 font-bold text-navy">Nome</Text>
-              <Input accessibilityLabel="Nome do produto" className="flex-none" maxLength={160} onChangeText={setName} value={name} />
+              <FieldLabel>Nome</FieldLabel>
+              <Input accessibilityLabel="Nome do produto" maxLength={160} onChangeText={setName} value={name} />
             </View>
             <View>
-              <Text className="mb-1.5 font-bold text-navy">Observação (opcional)</Text>
-              <Input accessibilityLabel="Observação do produto" className="min-h-[84px] flex-none py-3" maxLength={500} multiline onChangeText={setNotes} textAlignVertical="top" value={notes} />
+              <FieldLabel>Observação (opcional)</FieldLabel>
+              <Input accessibilityLabel="Observação do produto" maxLength={500} multiline onChangeText={setNotes} textAlignVertical="top" value={notes} />
             </View>
             {error ? <Text accessibilityRole="alert" className="text-sm text-destructive">{error}</Text> : null}
             <Button accessibilityRole="button" disabled={loading || saving} onPress={handleCreate}>
               <ButtonText>{saving ? 'Salvando...' : 'Cadastrar produto'}</ButtonText>
             </Button>
           </Card>
-          <Text className="mb-3 text-base font-extrabold text-navy">Produtos cadastrados</Text>
-          {loading ? <ActivityIndicator color="#D4A64A" /> : null}
+          <Text className="mb-3 text-base font-extrabold text-foreground">Produtos cadastrados</Text>
+          {loading ? <ActivityIndicator color={colors.primary} /> : null}
           {loadError ? <Text accessibilityRole="alert" className="mb-3 text-sm text-destructive">{loadError}</Text> : null}
           {!loading && !loadError && products.length === 0 ? <Text className="text-sm text-muted">Nenhum produto cadastrado.</Text> : null}
           {products.map((product) => (
             <Card className="mb-3 p-4" key={product.id}>
-              <Text className="font-extrabold text-navy">{product.name}</Text>
+              <Text className="font-extrabold text-foreground">{product.name}</Text>
               {product.notes ? <Text className="mt-1 text-sm text-muted">{product.notes}</Text> : null}
             </Card>
           ))}

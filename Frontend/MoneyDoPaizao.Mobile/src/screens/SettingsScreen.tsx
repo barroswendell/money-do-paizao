@@ -1,130 +1,170 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Switch, View } from 'react-native';
-import { ArrowLeft, Check, Moon, Palette, Sun } from 'lucide-react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useEffect, useState } from 'react';
+import { Pressable, ScrollView, Switch, View } from 'react-native';
+import { Check } from 'lucide-react-native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Button, ButtonText } from '../components/ui/button';
 import { Card } from '../components/ui/card';
-import { Input } from '../components/ui/input';
+import { FieldLabel, Input } from '../components/ui/input';
+import { ScreenHeader } from '../components/ui/screen-header';
 import { Text } from '../components/ui/text';
-import { RootStackParamList } from '../navigation/AppNavigator';
-import { DEFAULT_APPEARANCE, useTheme } from '../theme/ThemeProvider';
+import type { RootStackParamList } from '../navigation/AppNavigator';
+import type { AppearanceSettings } from '../services/api';
+import { buildColors, DEFAULT_APPEARANCE, isHexColor } from '../theme/palette';
+import { useTheme } from '../theme/ThemeProvider';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
 
-const colorOptions = ['#071629', '#1D4ED8', '#0F766E', '#7C3AED', '#9F1239', '#334155'];
+const colorOptions = [
+  { name: 'Azul-marinho', value: '#071629' },
+  { name: 'Dourado', value: '#D4A64A' },
+  { name: 'Azul', value: '#1D4ED8' },
+  { name: 'Verde', value: '#0F766E' },
+  { name: 'Verde-água', value: '#20C9AB' },
+  { name: 'Roxo', value: '#7C3AED' },
+  { name: 'Vinho', value: '#9F1239' },
+];
 
-function isHexColor(value: string) {
-  return /^#[0-9A-Fa-f]{6}$/.test(value.trim());
+function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <View>
+      <FieldLabel>{label}</FieldLabel>
+      <Input accessibilityLabel={label} autoCapitalize="characters" autoCorrect={false} maxLength={7} onChangeText={onChange} placeholder="#RRGGBB" value={value} />
+      <View className="mt-2 flex-row flex-wrap gap-1">
+        {colorOptions.map((option) => {
+          const checked = value.toUpperCase() === option.value;
+          return (
+            <Pressable
+              accessibilityLabel={label + ' · ' + option.name}
+              accessibilityRole="radio"
+              accessibilityState={{ checked }}
+              className={`h-11 w-11 items-center justify-center rounded-full border ${checked ? 'border-focus bg-selected' : 'border-transparent'}`}
+              key={option.value}
+              onPress={() => onChange(option.value)}
+            >
+              <View className="h-6 w-6 rounded-full border border-black/10" style={{ backgroundColor: option.value }} />
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
 }
 
 export function SettingsScreen({ navigation, route }: Props) {
   const { appearance, colors, loading, saveTheme } = useTheme();
-  const [useCustomTheme, setUseCustomTheme] = useState(appearance.useCustomTheme);
-  const [primaryColor, setPrimaryColor] = useState(appearance.primaryColor);
-  const [secondaryColor, setSecondaryColor] = useState(appearance.secondaryColor);
-  const [isDarkMode, setIsDarkMode] = useState(appearance.isDarkMode);
+  const [draft, setDraft] = useState(appearance);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    setUseCustomTheme(appearance.useCustomTheme);
-    setPrimaryColor(appearance.primaryColor);
-    setSecondaryColor(appearance.secondaryColor);
-    setIsDarkMode(appearance.isDarkMode);
-  }, [appearance]);
+  useEffect(() => { setDraft(appearance); }, [appearance]);
 
-  const previewPrimary = useCustomTheme && isHexColor(primaryColor) ? primaryColor : DEFAULT_APPEARANCE.primaryColor;
-  const previewSecondary = useCustomTheme && isHexColor(secondaryColor) ? secondaryColor : DEFAULT_APPEARANCE.secondaryColor;
-  const previewBackground = isDarkMode ? '#071629' : '#F6F8FB';
-
-  const previewLabel = useMemo(() => useCustomTheme ? 'Identidade personalizada' : 'Identidade padrão', [useCustomTheme]);
+  function updateDraft(change: Partial<AppearanceSettings>) {
+    setDraft((previous) => ({ ...previous, ...change }));
+    setError('');
+    setSaved(false);
+  }
 
   async function handleSave() {
+    const { primaryColor, secondaryColor, useCustomTheme } = draft;
+    if (useCustomTheme && (!isHexColor(primaryColor) || !isHexColor(secondaryColor))) {
+      setError('Use o formato hexadecimal #RRGGBB nas duas cores.');
+      return;
+    }
+
     setError('');
-    setSuccess('');
+    setSaved(false);
     try {
-      await saveTheme(route.params.token, { useCustomTheme, primaryColor, secondaryColor, isDarkMode });
-      setSuccess('Preferências salvas com sucesso.');
+      await saveTheme(route.params.token, {
+        ...draft,
+        primaryColor: isHexColor(primaryColor) ? primaryColor.trim() : DEFAULT_APPEARANCE.primaryColor,
+        secondaryColor: isHexColor(secondaryColor) ? secondaryColor.trim() : DEFAULT_APPEARANCE.secondaryColor,
+      });
+      setSaved(true);
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : 'Não foi possível salvar as preferências.');
     }
   }
 
-  function restoreDefault() {
-    setUseCustomTheme(false);
-    setPrimaryColor(DEFAULT_APPEARANCE.primaryColor);
-    setSecondaryColor(DEFAULT_APPEARANCE.secondaryColor);
-  }
+  const preview = buildColors(draft);
 
   return (
     <View className="flex-1 bg-background">
-      <View className="flex-row items-center border-b border-border bg-surface px-5 pb-4 pt-5">
-        <Pressable accessibilityLabel="Voltar" className="mr-3 h-10 w-10 items-center justify-center rounded-xl border border-border" onPress={() => navigation.goBack()}>
-          <ArrowLeft color={colors.foreground} size={19} strokeWidth={1.8} />
-        </Pressable>
-        <View>
-          <Text className="text-xl font-extrabold text-navy">Configurações</Text>
-          <Text className="text-[12px] text-muted">Personalize a aparência da sua conta.</Text>
-        </View>
-      </View>
-
+      <ScreenHeader title="Configurações" onBack={() => navigation.goBack()} />
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled">
-        <View className="mx-auto w-full max-w-2xl">
-          <Card className="mb-5 overflow-hidden p-0">
-            <View className="p-5" style={{ backgroundColor: previewBackground }}>
-              <View className="mb-4 flex-row items-center justify-between">
-                <View className="flex-row items-center">
-                  <View className="mr-3 h-11 w-11 items-center justify-center rounded-2xl" style={{ backgroundColor: previewPrimary }}>
-                    <Palette color={previewSecondary} size={21} />
-                  </View>
-                  <View>
-                    <Text className="text-[16px] font-extrabold" style={{ color: isDarkMode ? '#F7F9FC' : '#071629' }}>{previewLabel}</Text>
-                    <Text className="mt-1 text-[12px]" style={{ color: isDarkMode ? '#A9B5C4' : '#6D7784' }}>Visualização da sua identidade</Text>
-                  </View>
+        <View className="mx-auto w-full max-w-2xl gap-4">
+          <Text accessibilityRole="header" className="text-[26px] font-bold tracking-tight">Aparência</Text>
+
+          <Card className="gap-4 p-4 sm:p-5">
+            <View className="flex-row items-center justify-between gap-3">
+              <View className="min-w-0 flex-1">
+                <Text className="font-semibold">Cores personalizadas</Text>
+                <Text className="mt-1 text-sm text-muted">A paleta padrão usa azul-marinho e dourado.</Text>
+              </View>
+              <Switch
+                accessibilityLabel="Cores personalizadas"
+                value={draft.useCustomTheme}
+                onValueChange={(useCustomTheme) => updateDraft({ useCustomTheme })}
+                trackColor={{ false: colors.fieldBorder, true: colors.primary }}
+              />
+            </View>
+            {draft.useCustomTheme ? (
+              <View className="gap-4 border-t border-border pt-4">
+                <ColorField label="Cor principal" value={draft.primaryColor} onChange={(primaryColor) => updateDraft({ primaryColor })} />
+                <ColorField label="Cor de destaque" value={draft.secondaryColor} onChange={(secondaryColor) => updateDraft({ secondaryColor })} />
+                <Button
+                  className="self-start"
+                  onPress={() => updateDraft({ useCustomTheme: false, primaryColor: DEFAULT_APPEARANCE.primaryColor, secondaryColor: DEFAULT_APPEARANCE.secondaryColor })}
+                  size="sm"
+                  variant="outline"
+                >
+                  <ButtonText variant="outline">Restaurar cores padrão</ButtonText>
+                </Button>
+              </View>
+            ) : null}
+          </Card>
+
+          <Card className="gap-3 p-4 sm:p-5">
+            <Text className="font-semibold">Modo de exibição</Text>
+            <View className="flex-row gap-2">
+              {[false, true].map((isDarkMode) => {
+                const checked = draft.isDarkMode === isDarkMode;
+                return (
+                  <Pressable
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked }}
+                    className={`min-h-[48px] flex-1 flex-row items-center justify-center gap-2 rounded-xl border px-2 ${checked ? 'border-focus bg-selected' : 'border-border bg-input'}`}
+                    key={String(isDarkMode)}
+                    onPress={() => updateDraft({ isDarkMode })}
+                  >
+                    {checked ? <Check color={colors.selectedForeground} size={16} /> : null}
+                    <Text className="text-sm font-semibold">{isDarkMode ? 'Escuro' : 'Claro'}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </Card>
+
+          <Card className="gap-3 p-4 sm:p-5">
+            <Text className="font-semibold">Prévia</Text>
+            <View className="gap-3 rounded-xl border p-3" style={{ backgroundColor: preview.background, borderColor: preview.border }}>
+              <View className="rounded-xl border p-3" style={{ backgroundColor: preview.surface, borderColor: preview.border }}>
+                <Text className="text-sm" style={{ color: preview.muted }}>Saldo do mês</Text>
+                <Text className="mt-1 text-xl font-bold" style={{ color: preview.foreground }}>R$ 1.250,00</Text>
+              </View>
+              <View className="flex-row flex-wrap gap-2">
+                <View className="rounded-lg px-3 py-2" style={{ backgroundColor: preview.primary }}>
+                  <Text className="text-sm font-semibold" style={{ color: preview.primaryForeground }}>Novo lançamento</Text>
                 </View>
-                <View className="h-3 w-3 rounded-full" style={{ backgroundColor: previewSecondary }} />
-              </View>
-              <View className="rounded-xl p-4" style={{ backgroundColor: previewPrimary }}>
-                <Text className="text-[12px] font-bold" style={{ color: previewSecondary }}>SE ORGANIZA</Text>
-                <Text className="mt-1 text-[18px] font-extrabold" style={{ color: '#FFFFFF' }}>Seu sistema, do seu jeito.</Text>
+                <View className="rounded-lg px-3 py-2" style={{ backgroundColor: preview.selected }}>
+                  <Text className="text-sm font-semibold" style={{ color: preview.selectedForeground }}>Selecionado</Text>
+                </View>
               </View>
             </View>
           </Card>
 
-          <Card className="mb-4 p-5">
-            <View className="mb-5 flex-row items-center">
-              <Palette color={colors.secondary} size={20} />
-              <View className="ml-3"><Text className="text-[16px] font-extrabold text-navy">Identidade visual</Text><Text className="mt-1 text-[12px] text-muted">Escolha as cores usadas nos menus, botões e destaques.</Text></View>
-            </View>
-
-            <View className="mb-4 flex-row items-center justify-between rounded-xl border border-border bg-input px-4 py-3">
-              <View className="flex-1 pr-3"><Text className="text-[14px] font-bold text-navy">Usar cores personalizadas</Text><Text className="mt-1 text-[12px] text-muted">Desative para voltar à identidade padrão.</Text></View>
-              <Switch value={useCustomTheme} onValueChange={setUseCustomTheme} trackColor={{ false: '#CBD5E1', true: previewSecondary }} thumbColor="#FFFFFF" />
-            </View>
-
-            {useCustomTheme ? <>
-              <Text className="mb-1.5 text-[14px] font-bold text-navy">Cor primária</Text>
-              <View className="mb-3 flex-row items-center"><View className="mr-2 h-10 w-10 rounded-xl border border-border" style={{ backgroundColor: isHexColor(primaryColor) ? primaryColor : '#FFFFFF' }} /><Input className="flex-1" autoCapitalize="characters" maxLength={7} onChangeText={setPrimaryColor} placeholder="#071629" value={primaryColor} /></View>
-              <View className="mb-4 flex-row flex-wrap gap-2">{colorOptions.map((color) => <Pressable accessibilityLabel={`Escolher cor ${color}`} className="h-8 w-8 rounded-full border-2 border-white shadow-sm" key={`primary-${color}`} onPress={() => setPrimaryColor(color)} style={{ backgroundColor: color }} />)}</View>
-              <Text className="mb-1.5 text-[14px] font-bold text-navy">Cor secundária</Text>
-              <View className="mb-3 flex-row items-center"><View className="mr-2 h-10 w-10 rounded-xl border border-border" style={{ backgroundColor: isHexColor(secondaryColor) ? secondaryColor : '#FFFFFF' }} /><Input className="flex-1" autoCapitalize="characters" maxLength={7} onChangeText={setSecondaryColor} placeholder="#D4A64A" value={secondaryColor} /></View>
-              <View className="mb-2 flex-row flex-wrap gap-2">{colorOptions.map((color) => <Pressable accessibilityLabel={`Escolher cor ${color}`} className="h-8 w-8 rounded-full border-2 border-white shadow-sm" key={`secondary-${color}`} onPress={() => setSecondaryColor(color)} style={{ backgroundColor: color }} />)}</View>
-              <Pressable className="mt-3 self-start" onPress={restoreDefault}><Text className="text-[12px] font-bold text-primary">Voltar para cores padrão</Text></Pressable>
-            </> : null}
-          </Card>
-
-          <Card className="mb-5 p-5">
-            <View className="mb-4 flex-row items-center"><Moon color={colors.secondary} size={20} /><View className="ml-3"><Text className="text-[16px] font-extrabold text-navy">Modo de exibição</Text><Text className="mt-1 text-[12px] text-muted">Escolha entre o modo claro e o modo escuro.</Text></View></View>
-            <View className="flex-row gap-3">
-              <Pressable className={`flex-1 flex-row items-center justify-center rounded-xl border px-3 py-3 ${!isDarkMode ? 'border-navy bg-gold/20' : 'border-border'}`} onPress={() => setIsDarkMode(false)}><Sun color={colors.foreground} size={17} /><Text className="ml-2 text-[14px] font-bold text-navy">Modo claro</Text></Pressable>
-              <Pressable className={`flex-1 flex-row items-center justify-center rounded-xl border px-3 py-3 ${isDarkMode ? 'border-navy bg-gold/20' : 'border-border'}`} onPress={() => setIsDarkMode(true)}><Moon color={colors.foreground} size={17} /><Text className="ml-2 text-[14px] font-bold text-navy">Modo escuro</Text></Pressable>
-            </View>
-          </Card>
-
-          {error ? <Text className="mb-3 text-[13px] text-destructive">{error}</Text> : null}
-          {success ? <View className="mb-3 flex-row items-center"><Check color="#1A7F5A" size={16} /><Text className="ml-2 text-[13px] text-[#1A7F5A]">{success}</Text></View> : null}
-          <Button disabled={loading} onPress={handleSave}><ButtonText>{loading ? 'Salvando...' : 'Salvar preferências'}</ButtonText></Button>
-          {loading ? <ActivityIndicator className="mt-3" color={colors.secondary} /> : null}
+          {error ? <Text accessibilityLiveRegion="polite" className="text-sm text-destructive">{error}</Text> : null}
+          {saved ? <Text accessibilityLiveRegion="polite" className="text-sm text-success">Preferências salvas.</Text> : null}
+          <Button disabled={loading} onPress={handleSave}><ButtonText>{loading ? 'Aguarde...' : 'Salvar preferências'}</ButtonText></Button>
         </View>
       </ScrollView>
     </View>

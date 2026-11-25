@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, Platform, View } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import './global.css';
 import { AppNavigator } from './src/navigation/AppNavigator';
-import { ThemeProvider } from './src/theme/ThemeProvider';
+import { ThemeProvider, useTheme } from './src/theme/ThemeProvider';
 import { loadSession } from './src/services/session';
 import type { AuthResponse } from './src/services/api';
 
@@ -62,18 +62,42 @@ export default function App() {
       .finally(() => setSessionLoaded(true));
   }, []);
 
-  if (!sessionLoaded) {
-    return <View className="flex-1 items-center justify-center bg-background"><ActivityIndicator color="#D4A64A" size="large" /></View>;
-  }
-
   return (
     <ThemeProvider>
       <SafeAreaProvider>
-        <NavigationContainer>
-          <StatusBar style="auto" />
-          <AppNavigator session={session} />
-        </NavigationContainer>
+        <AppContent session={session} sessionLoaded={sessionLoaded} />
       </SafeAreaProvider>
     </ThemeProvider>
+  );
+}
+
+function AppContent({ session, sessionLoaded }: { session: AuthResponse | null; sessionLoaded: boolean }) {
+  const { appearance, colors } = useTheme();
+  const baseTheme = appearance.isDarkMode ? DarkTheme : DefaultTheme;
+  const navigationTheme = {
+    ...baseTheme,
+    colors: {
+      primary: colors.primary,
+      background: colors.background,
+      card: colors.surface,
+      text: colors.foreground,
+      border: colors.border,
+      notification: colors.destructive,
+    },
+  };
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <StatusBar style={appearance.isDarkMode ? 'light' : 'dark'} />
+      {sessionLoaded ? (
+        <NavigationContainer theme={navigationTheme}>
+          <AppNavigator session={session} />
+        </NavigationContainer>
+      ) : (
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator color={colors.primary} size="large" />
+        </View>
+      )}
+    </SafeAreaView>
   );
 }

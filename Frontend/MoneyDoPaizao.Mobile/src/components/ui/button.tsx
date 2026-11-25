@@ -10,7 +10,7 @@ type ButtonProps = PressableProps & {
 };
 
 const variants = {
-  default: 'bg-gold',
+  default: 'border border-transparent bg-primary',
   outline: 'border border-border bg-surface',
   ghost: 'bg-transparent',
 };
@@ -23,11 +23,12 @@ const sizes = {
 export function Button({ className, variant = 'default', size = 'default', ...props }: ButtonProps) {
   return (
     <Pressable
+      accessibilityRole="button"
       className={cn(
         'items-center justify-center rounded-xl',
         variants[variant],
         sizes[size],
-        'pressed:opacity-80 disabled:opacity-60',
+        'focus-visible:border-focus pressed:opacity-80 disabled:opacity-60',
         className,
       )}
       {...props}
@@ -42,6 +43,6 @@ type ButtonTextProps = {
 };
 
 export function ButtonText({ className, children, variant = 'default' }: ButtonTextProps) {
-  const textColor = variant === 'default' ? 'text-gold-foreground' : 'text-primary';
-  return <Text className={cn('text-sm font-bold', textColor, className)}>{children}</Text>;
+  const textColor = variant === 'default' ? 'text-primary-foreground' : 'text-link';
+  return <Text className={cn('text-sm font-semibold', textColor, className)}>{children}</Text>;
 }

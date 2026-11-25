@@ -1,7 +1,10 @@
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { CalendarDays } from 'lucide-react-native';
 import { useState } from 'react';
-import { Platform, Pressable, View } from 'react-native';
+import { Platform, Pressable } from 'react-native';
+import { cn } from '../lib/utils';
+import { useTheme } from '../theme/ThemeProvider';
+import { fieldControl } from './ui/input';
 import { Text } from './ui/text';
 
 type Props = {
@@ -20,9 +23,9 @@ function parseDate(value: string) {
   return new Date(year, month - 1, day);
 }
 
-function formatDate(value: string, label: string) {
+function formatDate(value: string) {
   if (!value) {
-    return `Escolha ${label.toLowerCase()}`;
+    return 'Selecione uma data';
   }
 
   const [year, month, day] = value.split('-');
@@ -36,7 +39,8 @@ function toISODate(value: Date) {
   return `${year}-${month}-${day}`;
 }
 
-export function DatePickerField({ value, onChange, label = 'a data', allowFuture = false }: Props) {
+export function DatePickerField({ value, onChange, label = 'Data', allowFuture = true }: Props) {
+  const { appearance, colors } = useTheme();
   const [open, setOpen] = useState(false);
 
   function handleChange(event: DateTimePickerEvent, selectedDate?: Date) {
@@ -49,14 +53,16 @@ export function DatePickerField({ value, onChange, label = 'a data', allowFuture
   return (
     <>
       <Pressable
-        accessibilityLabel={`Selecionar ${label.toLowerCase()}`}
-        className="flex-row items-center rounded-xl border border-border bg-input px-3.5"
+        accessibilityLabel={label}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        className={cn(fieldControl, 'w-full flex-row items-center justify-between gap-3 px-3.5', open && 'border-focus')}
         onPress={() => setOpen(true)}
       >
-        <CalendarDays color="#6D7784" size={18} strokeWidth={1.8} />
-        <Text className={`flex-1 px-3 py-3 text-base ${value ? 'text-foreground' : 'text-muted'}`}>
-          {formatDate(value, label)}
+        <Text className={cn('min-w-0 flex-1 py-3', !value && 'text-muted')}>
+          {formatDate(value)}
         </Text>
+        <CalendarDays color={colors.muted} size={18} strokeWidth={1.8} />
       </Pressable>
 
       {open ? (
@@ -65,6 +71,7 @@ export function DatePickerField({ value, onChange, label = 'a data', allowFuture
           mode="date"
           display={Platform.OS === 'android' ? 'calendar' : 'default'}
           maximumDate={allowFuture ? undefined : new Date()}
+          themeVariant={appearance.isDarkMode ? 'dark' : 'light'}
           onChange={handleChange}
         />
       ) : null}

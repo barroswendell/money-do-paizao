@@ -1,22 +1,19 @@
 import { useEffect, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  View,
-} from 'react-native';
-import { ArrowLeft, Eye, EyeOff, HandCoins, LockKeyhole, Mail, PartyPopper, Phone, ShoppingBag, UserRound, WalletCards } from 'lucide-react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { PaizaoLogo } from '../components/brand/PaizaoLogo';
-import { Button, ButtonText } from '../components/ui/button';
-import { Card } from '../components/ui/card';
-import { Input } from '../components/ui/input';
-import { Text } from '../components/ui/text';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
+import { Check } from 'lucide-react-native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { BrandMark } from '../components/brand/BrandMark';
 import { DatePickerField } from '../components/DatePickerField';
+import { Button, ButtonText } from '../components/ui/button';
+import { FieldLabel, Input } from '../components/ui/input';
+import { PasswordInput } from '../components/ui/password-input';
+import { ScreenHeader } from '../components/ui/screen-header';
+import { Text } from '../components/ui/text';
 import { formatPhone } from '../lib/format';
+import { moduleOptions } from '../lib/module-options';
 import { register, type ProductModule } from '../services/api';
-import { RootStackParamList } from '../navigation/AppNavigator';
+import type { RootStackParamList } from '../navigation/AppNavigator';
+import { useTheme } from '../theme/ThemeProvider';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Register'>;
 
@@ -46,13 +43,6 @@ function isValidDate(value: string) {
     && date.getUTCDate() === day;
 }
 
-const moduleOptions: { value: ProductModule; title: string; description: string; icon: typeof HandCoins }[] = [
-  { value: 'Loans', title: 'Empréstimos', description: 'Clientes, juros e recebimentos', icon: HandCoins },
-  { value: 'Parties', title: 'Organização de festas', description: 'Agenda, temas e sinais', icon: PartyPopper },
-  { value: 'PersonalFinance', title: 'Finanças pessoais', description: 'Entradas, gastos e saldo', icon: WalletCards },
-  { value: 'Sales', title: 'Vendas', description: 'Produtos, vendas e pagamentos', icon: ShoppingBag },
-];
-
 export function RegisterScreen({ navigation }: Props) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -61,8 +51,6 @@ export function RegisterScreen({ navigation }: Props) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [modules, setModules] = useState<ProductModule[]>(['Loans']);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -77,6 +65,7 @@ export function RegisterScreen({ navigation }: Props) {
   }, [navigation, success]);
 
   async function handleRegister() {
+    if (loading || success) return;
     setError('');
     setSuccess('');
     if (!name || !email || !phone || !birthDate || !password || !confirmPassword) {
@@ -111,120 +100,81 @@ export function RegisterScreen({ navigation }: Props) {
     }
   }
 
+  const { colors } = useTheme();
+
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      className="flex-1 bg-background"
-    >
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 bg-background">
+      <ScreenHeader title="Se Organiza" onBack={() => navigation.goBack()} actions={<BrandMark />} />
       <ScrollView
-        className="flex-1 bg-background"
-        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingVertical: 24 }}
+        className="flex-1"
+        contentContainerStyle={{ paddingHorizontal: 24, paddingVertical: 28 }}
         keyboardShouldPersistTaps="handled"
       >
-        <View className="mx-auto w-full max-w-md">
-          <View className="mb-8 flex-row items-center">
-            <Button accessibilityLabel="Voltar" className="mr-3 h-11 w-11 px-0" onPress={() => navigation.goBack()} variant="outline">
-              <ArrowLeft color="#071629" size={18} strokeWidth={1.8} />
-            </Button>
-            <PaizaoLogo className="flex-1" compact />
+        <View className="mx-auto w-full max-w-md gap-4">
+          <View className="mb-2">
+            <Text accessibilityRole="header" className="text-[30px] font-bold tracking-tight">Criar conta</Text>
+            <Text className="mt-1.5 text-sm leading-5 text-muted">Preencha seus dados e escolha os módulos que deseja usar.</Text>
           </View>
 
-          <Card className="p-5 shadow-sm">
-            <Text className="mb-1 text-[19px] font-extrabold text-foreground">Dados pessoais</Text>
-            <Text className="mb-5 text-[13px] leading-[19px] text-muted">
-              Escolha o espaço que você quer organizar. Seus dados ficam separados dos demais usuários.
-            </Text>
+          <View>
+            <FieldLabel>Nome completo</FieldLabel>
+            <Input accessibilityLabel="Nome completo" autoComplete="name" onChangeText={setName} placeholder="Seu nome" value={name} />
+          </View>
+          <View>
+            <FieldLabel>E-mail</FieldLabel>
+            <Input accessibilityLabel="E-mail" autoCapitalize="none" autoComplete="email" keyboardType="email-address" onChangeText={setEmail} placeholder="seu@email.com" value={email} />
+          </View>
+          <View>
+            <FieldLabel>Telefone</FieldLabel>
+            <Input accessibilityLabel="Telefone" autoComplete="tel" keyboardType="phone-pad" maxLength={15} onChangeText={(value) => setPhone(formatPhone(value))} placeholder="(00) 00000-0000" value={phone} />
+          </View>
+          <View>
+            <FieldLabel>Data de nascimento</FieldLabel>
+            <DatePickerField allowFuture={false} label="Data de nascimento" value={birthDate} onChange={setBirthDate} />
+          </View>
+          <View>
+            <PasswordInput autoComplete="new-password" label="Senha" onChangeText={setPassword} placeholder="Mínimo de 6 caracteres" value={password} />
+          </View>
+          <View>
+            <PasswordInput autoComplete="new-password" label="Confirmação de senha" onChangeText={setConfirmPassword} placeholder="Repita sua senha" value={confirmPassword} />
+          </View>
 
-            <Text className="mb-2 text-[14px] font-bold text-foreground">O que você quer organizar?</Text>
-            <View className="mb-5 gap-2">
-              {moduleOptions.map((option) => {
-                const Icon = option.icon;
-                const active = modules.includes(option.value);
+          <View className="mt-2">
+            <FieldLabel>Módulos</FieldLabel>
+            <View className="gap-2">
+              {moduleOptions.map(({ module, title, description, icon: Icon }) => {
+                const checked = modules.includes(module);
                 return (
                   <Pressable
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected: active }}
-                    className={`flex-row items-center rounded-2xl border px-3 py-3 ${active ? 'border-navy bg-navy/5' : 'border-border bg-input'}`}
-                    key={option.value}
-                    onPress={() => setModules((current) => current.includes(option.value) ? current.filter((item) => item !== option.value) : [...current, option.value])}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked }}
+                    className={`min-h-[54px] flex-row items-center gap-3 rounded-xl border px-3 py-2 ${checked ? 'border-focus bg-selected' : 'border-border bg-input'}`}
+                    key={module}
+                    onPress={() => setModules((current) => checked ? current.filter((item) => item !== module) : [...current, module])}
                   >
-                    <View className={`h-10 w-10 items-center justify-center rounded-xl ${active ? 'bg-gold' : 'bg-border/60'}`}>
-                      <Icon color="#071629" size={19} strokeWidth={1.8} />
+                    <Icon color={checked ? colors.selectedForeground : colors.muted} size={19} />
+                    <View className="min-w-0 flex-1">
+                      <Text className="text-sm font-semibold">{title}</Text>
+                      <Text className="mt-0.5 text-xs text-muted">{description}</Text>
                     </View>
-                    <View className="ml-3 flex-1">
-                      <Text className="text-[14px] font-extrabold text-navy">{option.title}</Text>
-                      <Text className="mt-0.5 text-[12px] text-muted">{option.description}</Text>
-                    </View>
-                    <View className={`h-5 w-5 items-center justify-center rounded-full border ${active ? 'border-navy' : 'border-border'}`}>
-                      {active ? <View className="h-2.5 w-2.5 rounded-full bg-gold" /> : null}
+                    <View className={`h-5 w-5 items-center justify-center rounded border ${checked ? 'border-primary bg-primary' : 'border-field-border'}`}>
+                      {checked ? <Check color={colors.primaryForeground} size={14} /> : null}
                     </View>
                   </Pressable>
                 );
               })}
             </View>
+          </View>
 
-            <View className="mb-4">
-              <Text className="mb-1.5 text-[14px] font-bold text-foreground">Nome completo</Text>
-              <View className="flex-row items-center rounded-xl border border-border bg-input px-3.5">
-                <UserRound color="#6D7784" size={18} strokeWidth={1.8} />
-                <Input className="border-0 bg-transparent px-3" onChangeText={setName} placeholder="Seu nome" value={name} />
-              </View>
-            </View>
+          {error ? <Text accessibilityLiveRegion="polite" className="text-sm text-destructive">{error}</Text> : null}
+          {success ? <Text accessibilityLiveRegion="polite" className="text-sm text-success">{success}</Text> : null}
 
-            <View className="mb-4">
-              <Text className="mb-1.5 text-[14px] font-bold text-foreground">E-mail</Text>
-              <View className="flex-row items-center rounded-xl border border-border bg-input px-3.5">
-                <Mail color="#6D7784" size={18} strokeWidth={1.8} />
-                <Input autoCapitalize="none" className="border-0 bg-transparent px-3" keyboardType="email-address" onChangeText={setEmail} placeholder="seu@email.com" value={email} />
-              </View>
-            </View>
-
-            <View className="mb-4">
-              <Text className="mb-1.5 text-[14px] font-bold text-foreground">Telefone</Text>
-              <View className="flex-row items-center rounded-xl border border-border bg-input px-3.5">
-                <Phone color="#6D7784" size={18} strokeWidth={1.8} />
-                <Input autoComplete="tel" className="border-0 bg-transparent px-3" keyboardType="phone-pad" maxLength={15} onChangeText={(value) => setPhone(formatPhone(value))} placeholder="(00) 00000-0000" value={phone} />
-              </View>
-            </View>
-
-            <View className="mb-4">
-              <Text className="mb-1.5 text-[14px] font-bold text-foreground">Data de nascimento</Text>
-              <DatePickerField value={birthDate} onChange={setBirthDate} />
-            </View>
-
-            <View className="mb-4">
-              <Text className="mb-1.5 text-[14px] font-bold text-foreground">Senha</Text>
-              <View className="flex-row items-center rounded-xl border border-border bg-input px-3.5">
-                <LockKeyhole color="#6D7784" size={18} strokeWidth={1.8} />
-                <Input className="border-0 bg-transparent px-3" onChangeText={setPassword} placeholder="Mínimo de 6 caracteres" secureTextEntry={!showPassword} value={password} />
-                <Pressable accessibilityLabel={showPassword ? 'Ocultar senha' : 'Mostrar senha'} onPress={() => setShowPassword((current) => !current)}>
-                  {showPassword ? <EyeOff color="#6D7784" size={18} /> : <Eye color="#6D7784" size={18} />}
-                </Pressable>
-              </View>
-            </View>
-
-            <View className="mb-4">
-              <Text className="mb-1.5 text-[14px] font-bold text-foreground">Confirmar senha</Text>
-              <View className="flex-row items-center rounded-xl border border-border bg-input px-3.5">
-                <LockKeyhole color="#6D7784" size={18} strokeWidth={1.8} />
-                <Input className="border-0 bg-transparent px-3" onChangeText={setConfirmPassword} placeholder="Repita sua senha" secureTextEntry={!showConfirmPassword} value={confirmPassword} />
-                <Pressable accessibilityLabel={showConfirmPassword ? 'Ocultar confirmação de senha' : 'Mostrar confirmação de senha'} onPress={() => setShowConfirmPassword((current) => !current)}>
-                  {showConfirmPassword ? <EyeOff color="#6D7784" size={18} /> : <Eye color="#6D7784" size={18} />}
-                </Pressable>
-              </View>
-            </View>
-
-            {error ? <Text className="mb-3 text-[13px] leading-[18px] text-destructive">{error}</Text> : null}
-            {success ? <Text className="mb-3 text-[13px] leading-[18px] text-[#1A7F5A]">{success}</Text> : null}
-
-            <Button className="mt-1" disabled={loading} onPress={handleRegister}>
-              <ButtonText>{loading ? 'Salvando...' : 'Criar cadastro'}</ButtonText>
-            </Button>
-
-            <Pressable className="mt-5 items-center" onPress={() => navigation.goBack()}>
-              <Text className="text-sm font-extrabold text-primary">Já tenho cadastro</Text>
-            </Pressable>
-          </Card>
+          <Button className="mt-2" disabled={loading || !!success} onPress={handleRegister}>
+            <ButtonText>{loading ? 'Salvando...' : 'Criar cadastro'}</ButtonText>
+          </Button>
+          <Pressable accessibilityRole="button" className="min-h-[44px] justify-center self-start" onPress={() => navigation.goBack()}>
+            <Text className="text-sm font-semibold text-link">Já tenho uma conta</Text>
+          </Pressable>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

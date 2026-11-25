@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
-import { ArrowLeft, Palette, Plus } from 'lucide-react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { ActivityIndicator, ScrollView, View } from 'react-native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Button, ButtonText } from '../components/ui/button';
 import { Card } from '../components/ui/card';
-import { Input } from '../components/ui/input';
+import { FieldLabel, Input } from '../components/ui/input';
+import { FormToggle, ScreenHeader } from '../components/ui/screen-header';
 import { Text } from '../components/ui/text';
-import { RootStackParamList } from '../navigation/AppNavigator';
+import type { RootStackParamList } from '../navigation/AppNavigator';
 import { createPartyTheme, getPartyThemes, type PartyTheme } from '../services/api';
+import { useTheme } from '../theme/ThemeProvider';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PartyThemes'>;
 
@@ -18,23 +19,82 @@ export function PartyThemesScreen({ navigation, route }: Props) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
+  const [loadError, setLoadError] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const { colors } = useTheme();
 
   async function loadThemes() {
-    try { setLoading(true); setThemes(await getPartyThemes(token)); }
-    catch (exception) { setError(exception instanceof Error ? exception.message : 'Não foi possível carregar os temas.'); }
-    finally { setLoading(false); }
+    setLoading(true);
+    setLoadError('');
+    try {
+      setThemes(await getPartyThemes(token));
+    } catch (exception) {
+      setLoadError(exception instanceof Error ? exception.message : 'Não foi possível carregar os temas.');
+    } finally {
+      setLoading(false);
+    }
   }
 
-  useEffect(() => { loadThemes(); }, [token]);
+  useEffect(() => { void loadThemes(); }, [token]);
 
   async function handleCreate() {
     setError('');
-    try { setSaving(true); await createPartyTheme(token, { name, description }); setName(''); setDescription(''); setFormOpen(false); await loadThemes(); }
-    catch (exception) { setError(exception instanceof Error ? exception.message : 'Não foi possível cadastrar o tema.'); }
-    finally { setSaving(false); }
+    if (!name.trim()) {
+      setError('Informe o nome do tema.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await createPartyTheme(token, { name: name.trim(), description: description.trim() });
+      setName('');
+      setDescription('');
+      setFormOpen(false);
+      await loadThemes();
+    } catch (exception) {
+      setError(exception instanceof Error ? exception.message : 'Não foi possível cadastrar o tema.');
+    } finally {
+      setSaving(false);
+    }
   }
 
-  return <View className="flex-1 bg-background"><View className="flex-row items-center justify-between border-b border-border bg-surface px-5 pb-4 pt-5"><View className="flex-row items-center"><Pressable accessibilityLabel="Voltar" className="mr-3 h-10 w-10 items-center justify-center rounded-xl border border-border" onPress={() => navigation.goBack()}><ArrowLeft color="#071629" size={19} /></Pressable><View><Text className="text-xl font-extrabold text-navy">Temas de festa</Text><Text className="text-[12px] text-muted">Crie uma biblioteca para sua agenda.</Text></View></View><Pressable accessibilityLabel="Novo tema" className="h-10 w-10 items-center justify-center rounded-xl bg-navy" onPress={() => setFormOpen((current) => !current)}><Plus color="#D4A64A" size={20} /></Pressable></View><ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled"><View className="mx-auto w-full max-w-2xl">{formOpen ? <Card className="mb-5 p-5"><Text className="mb-1 text-[18px] font-extrabold text-navy">Novo tema</Text><Text className="mb-4 text-[13px] text-muted">Cadastre nomes que você usa nas festas.</Text><Text className="mb-1.5 text-[14px] font-bold text-navy">Nome do tema</Text><Input className="mb-4" onChangeText={setName} placeholder="Ex.: Jardim encantado" value={name} /><Text className="mb-1.5 text-[14px] font-bold text-navy">Descrição (opcional)</Text><Input className="mb-4" onChangeText={setDescription} placeholder="Detalhes do tema" value={description} />{error ? <Text className="mb-3 text-[13px] text-destructive">{error}</Text> : null}<Button disabled={saving} onPress={handleCreate}><ButtonText>{saving ? 'Salvando...' : 'Cadastrar tema'}</ButtonText></Button></Card> : null}<View className="mb-4 flex-row items-center"><Palette color="#D4A64A" size={19} /><Text className="ml-2 text-[16px] font-extrabold text-navy">Temas cadastrados</Text></View>{loading ? <ActivityIndicator color="#D4A64A" size="large" /> : null}{themes.length === 0 && !loading ? <Card className="items-center p-8"><Palette color="#6D7784" size={28} /><Text className="mt-3 text-[15px] font-bold text-navy">Nenhum tema ainda</Text><Text className="mt-1 text-center text-[13px] text-muted">Use o botão + para criar o primeiro.</Text></Card> : null}{themes.map((theme) => <Card className="mb-3 p-4" key={theme.id}><Text className="text-[16px] font-extrabold text-navy">{theme.name}</Text>{theme.description ? <Text className="mt-1 text-[13px] text-muted">{theme.description}</Text> : null}</Card>)}</View></ScrollView></View>;
+  return (
+    <View className="flex-1 bg-background">
+      <ScreenHeader
+        title="Temas de festa"
+        onBack={() => navigation.goBack()}
+        actions={<FormToggle label="Novo tema" open={formOpen} onPress={() => setFormOpen((current) => !current)} />}
+      />
+      <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled">
+        <View className="mx-auto w-full max-w-2xl gap-4">
+          {formOpen ? (
+            <Card className="gap-4 p-4 sm:p-5">
+              <Text accessibilityRole="header" className="text-lg font-bold">Novo tema</Text>
+              <View>
+                <FieldLabel>Nome do tema</FieldLabel>
+                <Input accessibilityLabel="Nome do tema" onChangeText={setName} placeholder="Ex.: Jardim encantado" value={name} />
+              </View>
+              <View>
+                <FieldLabel>Descrição (opcional)</FieldLabel>
+                <Input accessibilityLabel="Descrição do tema" multiline onChangeText={setDescription} placeholder="Detalhes do tema" textAlignVertical="top" value={description} />
+              </View>
+              {error ? <Text accessibilityLiveRegion="polite" className="text-sm text-destructive">{error}</Text> : null}
+              <Button disabled={saving} onPress={handleCreate}><ButtonText>{saving ? 'Salvando...' : 'Cadastrar tema'}</ButtonText></Button>
+            </Card>
+          ) : null}
+          <Text accessibilityRole="header" className="text-lg font-bold">Temas cadastrados</Text>
+          {loading ? <ActivityIndicator color={colors.primary} /> : null}
+          {loadError ? <Text accessibilityLiveRegion="polite" className="text-sm text-destructive">{loadError}</Text> : null}
+          {!themes.length && !loading && !loadError ? <Card className="p-4"><Text className="text-sm text-muted">Nenhum tema cadastrado.</Text></Card> : null}
+          {themes.map((theme) => (
+            <Card className="p-4" key={theme.id}>
+              <Text className="font-semibold">{theme.name}</Text>
+              {theme.description ? <Text className="mt-1 text-sm text-muted">{theme.description}</Text> : null}
+            </Card>
+          ))}
+        </View>
+      </ScrollView>
+    </View>
+  );
 }

@@ -1,13 +1,13 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
-import { ArrowLeftRight, BarChart3, CircleDollarSign, LogOut, Menu, Package, Plus, Settings, ShoppingBag, UsersRound, X } from 'lucide-react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { BrandMark } from '../components/brand/BrandMark';
+import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { Package, Plus, Settings, ShoppingBag, UsersRound } from 'lucide-react-native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Button, ButtonText } from '../components/ui/button';
 import { Card } from '../components/ui/card';
+import { Metrics, ModuleHeader, ModuleMenu } from '../components/ui/module-panel';
 import { Text } from '../components/ui/text';
-import { RootStackParamList } from '../navigation/AppNavigator';
+import type { RootStackParamList } from '../navigation/AppNavigator';
 import { getSalesDashboard, type SalesDashboard } from '../services/api';
 import { clearSession } from '../services/session';
 import { formatCurrency } from '../lib/format';
@@ -19,18 +19,76 @@ export function SalesDashboardScreen({ navigation, route }: Props) {
   const { token, userName, role, modules } = route.params;
   const [summary, setSummary] = useState<SalesDashboard | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const { colors, resetTheme } = useTheme();
+  const openSales = () => navigation.navigate('Sales', { token });
+  const openProducts = () => navigation.navigate('Products', { token });
+  const openCustomers = () => navigation.navigate('Customers', { token });
 
   useFocusEffect(useCallback(() => {
     let active = true;
+
+    setError('');
     setLoading(true);
     getSalesDashboard(token)
-      .then((data) => { if (active) setSummary(data); })
-      .catch(() => undefined)
+      .then((result) => { if (active) setSummary(result); })
+      .catch((exception) => { if (active) setError(exception instanceof Error ? exception.message : 'Não foi possível carregar as vendas.'); })
       .finally(() => { if (active) setLoading(false); });
+
     return () => { active = false; };
   }, [token]));
 
-  return <View className="flex-1 bg-background"><View className="flex-row items-center justify-between border-b border-border bg-surface px-5 pb-4 pt-5"><View className="flex-row items-center"><BrandMark /><View className="ml-3"><Text className="text-[17px] font-extrabold text-navy">Se Organiza</Text><Text className="text-[11px] font-medium text-muted">Vendas</Text></View></View><Pressable accessibilityLabel="Abrir menu" className="h-10 w-10 items-center justify-center rounded-xl bg-navy" onPress={() => setMenuOpen(true)}><Menu color={colors.secondary} size={20} /></Pressable></View><ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }}><View className="mx-auto w-full max-w-2xl"><Text className="mb-1 text-[13px] font-bold uppercase tracking-widest text-gold">PAINEL DE VENDAS</Text><Text className="text-2xl font-extrabold text-navy">Olá, {userName}.</Text><Text className="mt-1 text-[14px] text-muted">Acompanhe seus produtos, vendas e recebimentos.</Text>{loading ? <ActivityIndicator className="mt-4" color={colors.secondary} /> : null}<Card className="my-5 border-0 bg-navy p-5"><Text className="mb-2 text-[11px] font-extrabold tracking-widest text-gold">SE ORGANIZA · VENDAS</Text><Text className="text-xl font-extrabold text-white">Venda com clareza.</Text><Text className="mt-2 text-[13px] leading-5 text-white/70">Tenha o catálogo, os clientes e os pagamentos no mesmo lugar.</Text></Card><View className="mb-3 flex-row gap-3"><Card className="flex-1 p-4"><CircleDollarSign color={colors.secondary} size={19} /><Text className="mt-3 text-[12px] text-muted">Faturamento</Text><Text className="mt-1 text-lg font-extrabold text-navy">{formatCurrency(summary?.totalRevenue ?? 0)}</Text></Card><Card className="flex-1 p-4"><BarChart3 color={colors.secondary} size={19} /><Text className="mt-3 text-[12px] text-muted">Vendas realizadas</Text><Text className="mt-1 text-2xl font-extrabold text-navy">{summary?.totalSales ?? 0}</Text></Card></View><View className="mb-5 flex-row gap-3"><Card className="flex-1 p-4"><Text className="text-[12px] text-muted">Já recebido</Text><Text className="mt-2 text-lg font-extrabold text-[#1A7F5A]">{formatCurrency(summary?.totalReceived ?? 0)}</Text></Card><Card className="flex-1 p-4"><Text className="text-[12px] text-muted">A receber</Text><Text className="mt-2 text-lg font-extrabold text-navy">{formatCurrency(summary?.totalPending ?? 0)}</Text></Card></View><Card className="p-5"><Text className="mb-4 text-[16px] font-extrabold text-navy">Ações rápidas</Text><View className="gap-3"><Button className="flex-row gap-2" onPress={() => navigation.navigate('Sales', { token })}><Plus color="#071629" size={18} /><ButtonText>Registrar venda</ButtonText></Button><Button className="flex-row gap-2" onPress={() => navigation.navigate('Products', { token })} variant="outline"><Package color="#071629" size={18} /><ButtonText variant="outline">Cadastrar produto</ButtonText></Button><Button className="flex-row gap-2" onPress={() => navigation.navigate('Customers', { token })} variant="outline"><UsersRound color="#071629" size={18} /><ButtonText variant="outline">Cadastrar cliente</ButtonText></Button></View></Card></View></ScrollView>{menuOpen ? <View className="absolute inset-0 z-20 flex-row"><Pressable className="flex-1 bg-black/40" onPress={() => setMenuOpen(false)} /><View className="w-[300px] flex-1 bg-navy px-6 pb-8 pt-12"><View className="flex-row items-center justify-between"><View className="flex-row items-center"><BrandMark dark /><View className="ml-3"><Text className="text-[17px] font-extrabold text-white">Se Organiza</Text><Text className="text-[11px] text-white/60">Vendas</Text></View></View><Pressable onPress={() => setMenuOpen(false)}><X color="#FFF" size={22} /></Pressable></View><View className="mt-10 gap-2"><Pressable className="flex-row items-center rounded-xl bg-white/10 px-3 py-3" onPress={() => setMenuOpen(false)}><ShoppingBag color={colors.secondary} size={19} /><Text className="ml-3 text-[14px] font-semibold text-gold">Visão geral</Text></Pressable><Pressable className="flex-row items-center rounded-xl px-3 py-3" onPress={() => { setMenuOpen(false); navigation.navigate('Sales', { token }); }}><CircleDollarSign color="#FFF" size={19} /><Text className="ml-3 text-[14px] font-semibold text-white/80">Vendas</Text></Pressable><Pressable className="flex-row items-center rounded-xl px-3 py-3" onPress={() => { setMenuOpen(false); navigation.navigate('Products', { token }); }}><Package color="#FFF" size={19} /><Text className="ml-3 text-[14px] font-semibold text-white/80">Produtos</Text></Pressable><Pressable className="flex-row items-center rounded-xl px-3 py-3" onPress={() => { setMenuOpen(false); navigation.navigate('Customers', { token }); }}><UsersRound color="#FFF" size={19} /><Text className="ml-3 text-[14px] font-semibold text-white/80">Clientes</Text></Pressable><Pressable className="flex-row items-center rounded-xl px-3 py-3" onPress={() => { setMenuOpen(false); navigation.navigate('Settings', { token }); }}><Settings color="#FFF" size={19} /><Text className="ml-3 text-[14px] font-semibold text-white/80">Configurações</Text></Pressable></View><Pressable className="mt-5 flex-row items-center rounded-xl border border-gold/40 px-3 py-3" onPress={() => { setMenuOpen(false); navigation.replace('ModuleSelection', { userName, role, token, modules }); }}><ArrowLeftRight color="#D4A64A" size={19} /><Text className="ml-3 text-[14px] font-semibold text-gold">Trocar de módulo</Text></Pressable><View className="mt-auto border-t border-white/10 pt-5"><Pressable className="flex-row items-center px-3 py-3" onPress={() => { void clearSession(); resetTheme(); navigation.replace('Login'); }}><LogOut color="#FFF" size={19} /><Text className="ml-3 text-[14px] font-semibold text-white/80">Sair</Text></Pressable></View></View></View> : null}</View>;
+  return (
+    <View className="flex-1 bg-background">
+      <ModuleHeader title="Vendas" onMenu={() => setMenuOpen(true)} />
+      <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }}>
+        <View className="mx-auto w-full max-w-4xl gap-5">
+          <View className="flex-row flex-wrap items-center justify-between gap-3">
+            <Text accessibilityRole="header" className="text-[26px] font-bold tracking-tight">Visão geral</Text>
+            <Button className="flex-row gap-2" onPress={openSales}>
+              <Plus color={colors.primaryForeground} size={18} />
+              <ButtonText>Registrar venda</ButtonText>
+            </Button>
+          </View>
+
+          {loading ? <ActivityIndicator color={colors.primary} /> : null}
+          {error ? <Text accessibilityLiveRegion="polite" className="text-sm text-destructive">{error}</Text> : null}
+          {summary ? (
+            <>
+              <Card className="border-0 bg-primary p-5">
+                <Text className="text-sm text-primary-foreground">Faturamento</Text>
+                <Text className="mt-2 text-[32px] font-bold tabular-nums tracking-tight text-primary-foreground">{formatCurrency(summary.totalRevenue)}</Text>
+              </Card>
+              <Metrics items={[
+                { label: 'Vendas realizadas', value: summary.totalSales },
+                { label: 'Já recebido', value: formatCurrency(summary.totalReceived), tone: 'positive' },
+                { label: 'A receber', value: formatCurrency(summary.totalPending) },
+              ]} />
+            </>
+          ) : null}
+
+          <View className="flex-row flex-wrap gap-2">
+            <Button onPress={openProducts} variant="outline"><ButtonText variant="outline">Cadastrar produto</ButtonText></Button>
+            <Button onPress={openCustomers} variant="outline"><ButtonText variant="outline">Cadastrar cliente</ButtonText></Button>
+          </View>
+        </View>
+      </ScrollView>
+
+      {menuOpen ? (
+        <ModuleMenu
+          title="Vendas"
+          items={[
+            { label: 'Vendas', icon: ShoppingBag, action: openSales },
+            { label: 'Produtos', icon: Package, action: openProducts },
+            { label: 'Clientes', icon: UsersRound, action: openCustomers },
+            { label: 'Configurações', icon: Settings, action: () => navigation.navigate('Settings', { token }) },
+          ]}
+          onClose={() => setMenuOpen(false)}
+          onSwitch={() => navigation.replace('ModuleSelection', { userName, role, token, modules })}
+          onSignOut={() => { void clearSession(); resetTheme(); navigation.replace('Login'); }}
+        />
+      ) : null}
+    </View>
+  );
 }

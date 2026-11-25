@@ -1,5 +1,7 @@
 import { View } from 'react-native';
-import { ClipboardCheck, Coins } from 'lucide-react-native';
+import { Check } from 'lucide-react-native';
+import { cn } from '../../lib/utils';
+import { useTheme } from '../../theme/ThemeProvider';
 
 type BrandMarkProps = {
   dark?: boolean;
@@ -7,12 +9,11 @@ type BrandMarkProps = {
 };
 
 export function BrandMark({ dark = false, className }: BrandMarkProps) {
+  const { colors } = useTheme();
+
   return (
-    <View className={`relative h-11 w-11 items-center justify-center rounded-2xl ${dark ? 'bg-gold' : 'bg-navy'} ${className ?? ''}`}>
-      <Coins color={dark ? '#071629' : '#D4A64A'} size={21} strokeWidth={1.7} />
-      <View className={`absolute -right-1 -top-1 h-5 w-5 items-center justify-center rounded-md ${dark ? 'bg-navy' : 'bg-gold'}`}>
-        <ClipboardCheck color={dark ? '#D4A64A' : '#071629'} size={12} strokeWidth={2} />
-      </View>
+    <View className={cn('h-11 w-11 items-center justify-center rounded-[13px]', dark ? 'bg-primary' : 'bg-accent', className)}>
+      <Check color={dark ? colors.primaryForeground : colors.secondaryForeground} size={23} strokeWidth={2.5} />
     </View>
   );
 }

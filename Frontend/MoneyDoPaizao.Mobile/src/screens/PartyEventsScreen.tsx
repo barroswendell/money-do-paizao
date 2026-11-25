@@ -1,13 +1,15 @@
+import { useTheme } from '../theme/ThemeProvider';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
-import { ArrowLeft, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Plus } from 'lucide-react-native';
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { PartyEventForm } from '../components/PartyEventForm';
 import { PartyMonthTotals } from '../components/PartyMonthTotals';
 import { Button, ButtonText } from '../components/ui/button';
 import { Card } from '../components/ui/card';
-import { Input } from '../components/ui/input';
+import { FieldLabel, fieldControl, Input } from '../components/ui/input';
+import { FormToggle, ScreenHeader } from '../components/ui/screen-header';
 import { Text } from '../components/ui/text';
 import { formatCurrency, parseMoneyCents } from '../lib/format';
 import { PARTY_MONTH_NAMES, emptyPartyMonth, partyMonthLabel, partyToday, shiftPartyMonth } from '../lib/partyMonths';
@@ -58,18 +60,18 @@ function EventCard({ event, token, today, onUpdate }: {
     <Card className="mb-3 gap-3 p-4">
       <View className="flex-row items-start justify-between gap-3">
         <View className="flex-1">
-          <Text className="text-base font-extrabold text-navy">{event.customerName}</Text>
+          <Text className="text-base font-extrabold text-foreground">{event.customerName}</Text>
           <Text className="mt-1 text-xs text-muted">{eventDate.split('-').reverse().join('/')}{event.themeName ? ` · ${event.themeName}` : ''}</Text>
           <Text className="mt-1 text-xs font-semibold text-muted">{eventDate < today ? 'Realizada' : 'Agendada'}</Text>
         </View>
-        <Text className="text-sm font-extrabold text-navy">{formatCurrency(event.totalAmount)}</Text>
+        <Text className="text-sm font-extrabold text-foreground">{formatCurrency(event.totalAmount)}</Text>
       </View>
       {products.length > 0 ? (
         <View className="gap-1 border-t border-border pt-3">
           <Text className="mb-1 text-xs font-bold text-muted">Produtos</Text>
           {products.map((product) => (
             <View className="flex-row justify-between gap-2" key={product.id}>
-              <Text className="flex-1 text-sm text-navy">{product.productName}</Text>
+              <Text className="flex-1 text-sm text-foreground">{product.productName}</Text>
               <Text className="text-sm text-muted">{product.isGift ? `Brinde · ${formatCurrency(0)}` : formatCurrency(product.amount)}</Text>
             </View>
           ))}
@@ -79,12 +81,12 @@ function EventCard({ event, token, today, onUpdate }: {
       <View className="flex-row flex-wrap justify-between gap-2 border-t border-border pt-3">
         <Text className="text-xs text-muted">Sinal {formatCurrency(event.depositAmount)}</Text>
         <Text className="text-xs text-muted">Recebido {formatCurrency(received)}</Text>
-        <Text className="text-xs font-bold text-navy">A receber {formatCurrency(event.remainingAmount)}</Text>
+        <Text className="text-xs font-bold text-foreground">A receber {formatCurrency(event.remainingAmount)}</Text>
       </View>
       {editing ? (
         <View className="gap-2 border-t border-border pt-3">
-          <Text className="text-sm font-bold text-navy">Total recebido, incluindo o sinal</Text>
-          <Input accessibilityLabel="Total recebido, incluindo o sinal" className="flex-none" keyboardType="decimal-pad" onChangeText={setAmount} value={amount} />
+          <FieldLabel className="mb-0">Total recebido, incluindo o sinal</FieldLabel>
+          <Input accessibilityLabel="Total recebido, incluindo o sinal" keyboardType="decimal-pad" onChangeText={setAmount} value={amount} />
           {error ? <Text accessibilityRole="alert" className="text-sm text-destructive">{error}</Text> : null}
           <View className="flex-row flex-wrap gap-2">
             <Button accessibilityRole="button" disabled={saving} onPress={saveReceived}><ButtonText>{saving ? 'Salvando...' : 'Salvar recebimento'}</ButtonText></Button>
@@ -93,7 +95,7 @@ function EventCard({ event, token, today, onUpdate }: {
         </View>
       ) : (
         <Pressable accessibilityRole="button" className="self-start py-2" onPress={() => { setAmount(received.toFixed(2).replace('.', ',')); setError(''); setEditing(true); }}>
-          <Text className="text-sm font-bold text-navy">Atualizar recebimento</Text>
+          <Text className="text-sm font-bold text-foreground">Atualizar recebimento</Text>
         </Pressable>
       )}
     </Card>
@@ -101,6 +103,7 @@ function EventCard({ event, token, today, onUpdate }: {
 }
 
 export function PartyEventsScreen({ navigation, route }: Props) {
+  const { colors } = useTheme();
   const { token, month: initialMonth, create } = route.params;
   const today = partyToday();
   const [month, setMonth] = useState(initialMonth ?? today.slice(0, 7));
@@ -159,18 +162,13 @@ export function PartyEventsScreen({ navigation, route }: Props) {
 
   return (
     <View className="flex-1 bg-background">
-      <View className="flex-row items-center justify-between border-b border-border bg-surface px-5 pb-4 pt-5">
-        <View className="flex-row items-center gap-3">
-          <Pressable accessibilityRole="button" accessibilityLabel="Voltar" className="h-10 w-10 items-center justify-center rounded-xl border border-border" onPress={navigation.goBack}>
-            <ArrowLeft color="#071629" size={19} />
-          </Pressable>
-          <Text className="text-xl font-extrabold text-navy">Agenda de festas</Text>
-        </View>
-        <Pressable accessibilityRole="button" accessibilityLabel={formOpen ? 'Fechar formulário' : 'Nova festa'} accessibilityState={{ expanded: formOpen }} className="h-10 w-10 items-center justify-center rounded-xl bg-navy" onPress={() => setFormOpen((open) => !open)}>
-          {formOpen ? <Text className="text-lg font-bold text-gold">×</Text> : <Plus color="#D4A64A" size={20} />}
-        </Pressable>
-      </View>
-      <ScrollView contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled">
+      <ScreenHeader
+        title="Agenda de festas"
+        onBack={() => navigation.goBack()}
+        actions={<FormToggle label="Nova festa" open={formOpen} onPress={() => setFormOpen((current) => !current)} />}
+      />
+
+      <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled">
         <View className="mx-auto w-full max-w-2xl">
           {formOpen ? (
             <>
@@ -185,33 +183,33 @@ export function PartyEventsScreen({ navigation, route }: Props) {
             </>
           ) : null}
           <View className="mb-4 gap-2">
-            <Text className="text-sm font-bold text-navy">Mês da festa</Text>
+            <Text className="text-sm font-bold text-foreground">Mês da festa</Text>
             <View className="flex-row gap-2">
               <Pressable accessibilityRole="button" accessibilityLabel="Mês anterior" className="items-center justify-center rounded-xl border border-border px-3" onPress={() => { setMonth(shiftPartyMonth(month, -1)); setPickerYear(null); }}>
-                <ChevronLeft color="#6D7784" size={18} />
+                <ChevronLeft color={colors.muted} size={18} />
               </Pressable>
-              <Pressable accessibilityRole="button" accessibilityState={{ expanded: pickerYear !== null }} className="flex-1 flex-row items-center justify-between gap-2 rounded-xl border border-border bg-input px-3 py-3" onPress={() => setPickerYear(pickerYear === null ? Number(month.slice(0, 4)) : null)}>
-                <CalendarDays color="#6D7784" size={17} />
-                <Text className="flex-1 font-bold text-navy">{partyMonthLabel(month)}</Text>
-                <ChevronDown color="#6D7784" size={16} />
+              <Pressable accessibilityRole="button" accessibilityState={{ expanded: pickerYear !== null }} className={`${fieldControl} flex-1 flex-row items-center justify-between gap-2 px-3 py-3`} onPress={() => setPickerYear(pickerYear === null ? Number(month.slice(0, 4)) : null)}>
+                <CalendarDays color={colors.muted} size={17} />
+                <Text className="flex-1 font-bold text-foreground">{partyMonthLabel(month)}</Text>
+                <ChevronDown color={colors.muted} size={16} />
               </Pressable>
               <Pressable accessibilityRole="button" accessibilityLabel="Próximo mês" className="items-center justify-center rounded-xl border border-border px-3" onPress={() => { setMonth(shiftPartyMonth(month, 1)); setPickerYear(null); }}>
-                <ChevronRight color="#6D7784" size={18} />
+                <ChevronRight color={colors.muted} size={18} />
               </Pressable>
             </View>
             {pickerYear !== null ? (
               <Card className="gap-2 p-3">
                 <View className="flex-row items-center justify-between">
-                  <Pressable accessibilityRole="button" accessibilityLabel="Ano anterior" className="p-2" onPress={() => setPickerYear(pickerYear - 1)}><ChevronLeft color="#6D7784" size={18} /></Pressable>
-                  <Text className="font-bold text-navy">{pickerYear}</Text>
-                  <Pressable accessibilityRole="button" accessibilityLabel="Próximo ano" className="p-2" onPress={() => setPickerYear(pickerYear + 1)}><ChevronRight color="#6D7784" size={18} /></Pressable>
+                  <Pressable accessibilityRole="button" accessibilityLabel="Ano anterior" className="p-2" onPress={() => setPickerYear(pickerYear - 1)}><ChevronLeft color={colors.muted} size={18} /></Pressable>
+                  <Text className="font-bold text-foreground">{pickerYear}</Text>
+                  <Pressable accessibilityRole="button" accessibilityLabel="Próximo ano" className="p-2" onPress={() => setPickerYear(pickerYear + 1)}><ChevronRight color={colors.muted} size={18} /></Pressable>
                 </View>
                 <View className="flex-row flex-wrap gap-1">
                   {PARTY_MONTH_NAMES.map((label, index) => {
                     const key = `${pickerYear}-${String(index + 1).padStart(2, '0')}`;
                     return (
-                      <Pressable accessibilityRole="button" accessibilityState={{ selected: key === month }} className={`w-[31%] rounded-lg px-2 py-3 ${key === month ? 'bg-navy' : 'bg-input'}`} key={key} onPress={() => { setMonth(key); setPickerYear(null); }}>
-                        <Text className={`text-center text-xs font-semibold ${key === month ? 'text-white' : 'text-navy'}`}>{label}</Text>
+                      <Pressable accessibilityRole="button" accessibilityState={{ selected: key === month }} className={`w-[31%] rounded-lg px-2 py-3 ${key === month ? 'bg-primary' : 'bg-input'}`} key={key} onPress={() => { setMonth(key); setPickerYear(null); }}>
+                        <Text className={`text-center text-xs font-semibold ${key === month ? 'text-primary-foreground' : 'text-foreground'}`}>{label}</Text>
                       </Pressable>
                     );
                   })}
@@ -219,7 +217,7 @@ export function PartyEventsScreen({ navigation, route }: Props) {
               </Card>
             ) : null}
           </View>
-          {!events && !listError ? <ActivityIndicator color="#D4A64A" /> : null}
+          {!events && !listError ? <ActivityIndicator color={colors.primary} /> : null}
           {listError ? (
             <Pressable accessibilityRole="button" className="mb-3" onPress={() => setRefresh((current) => current + 1)}>
               <Text className="text-sm text-destructive">{listError} Toque para tentar de novo.</Text>
@@ -228,7 +226,7 @@ export function PartyEventsScreen({ navigation, route }: Props) {
           {events ? (
             <>
               <View className="mb-5 gap-2">
-                <Text className="text-base font-extrabold text-navy">{visibleEvents.length === 1 ? '1 festa no mês' : `${visibleEvents.length} festas no mês`}</Text>
+                <Text className="text-base font-extrabold text-foreground">{visibleEvents.length === 1 ? '1 festa no mês' : `${visibleEvents.length} festas no mês`}</Text>
                 <Text className="text-sm text-muted">{scheduled} {scheduled === 1 ? 'agendada' : 'agendadas'} · {completed} {completed === 1 ? 'realizada' : 'realizadas'}</Text>
                 <PartyMonthTotals month={monthTotals} />
               </View>

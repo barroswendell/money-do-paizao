@@ -3,16 +3,7 @@
 @tailwind utilities;
 
 :root {
-  --color-background: 246 248 251;
-  --color-surface: 255 255 255;
-  --color-foreground: 7 22 41;
-  --color-muted: 109 119 132;
-  --color-border: 226 231 237;
-  --color-input: 251 252 254;
-  --color-primary: 7 22 41;
-  --color-primary-foreground: 255 255 255;
-  --color-secondary: 212 166 74;
-  --color-secondary-foreground: 7 22 41;
+  background: #f4f7f7;
 }
 
 html,
@@ -22,19 +13,5 @@ body,
 }
 
 body {
-  background: rgb(var(--color-background));
-}
-
-/* These semantic aliases keep brand surfaces and readable text separate in dark mode. */
-.bg-navy {
-  background-color: rgb(var(--color-primary));
-}
-
-.text-navy,
-.text-primary {
-  color: rgb(var(--color-foreground));
-}
-
-.border-navy {
-  border-color: rgb(var(--color-primary));
+  background: inherit;
 }

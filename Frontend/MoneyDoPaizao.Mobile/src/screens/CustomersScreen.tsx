@@ -1,10 +1,12 @@
+import { useTheme } from '../theme/ThemeProvider';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
-import { ArrowLeft, Phone, Plus, UserRound, UsersRound } from 'lucide-react-native';
+import { ActivityIndicator, ScrollView, Switch, View } from 'react-native';
+import { UsersRound } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Button, ButtonText } from '../components/ui/button';
 import { Card } from '../components/ui/card';
-import { Input } from '../components/ui/input';
+import { FieldLabel, Input } from '../components/ui/input';
+import { FormToggle, ScreenHeader } from '../components/ui/screen-header';
 import { Text } from '../components/ui/text';
 import { formatPhone } from '../lib/format';
 import { RootStackParamList } from '../navigation/AppNavigator';
@@ -13,6 +15,7 @@ import { createCustomer, getCustomers, type Customer } from '../services/api';
 type Props = NativeStackScreenProps<RootStackParamList, 'Customers'>;
 
 export function CustomersScreen({ navigation, route }: Props) {
+  const { colors } = useTheme();
   const { token } = route.params;
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [formOpen, setFormOpen] = useState(false);
@@ -69,67 +72,46 @@ export function CustomersScreen({ navigation, route }: Props) {
 
   return (
     <View className="flex-1 bg-background">
-      <View className="flex-row items-center justify-between border-b border-border bg-surface px-5 pb-4 pt-5">
-        <View className="flex-row items-center">
-          <Pressable accessibilityLabel="Voltar" className="mr-3 h-10 w-10 items-center justify-center rounded-xl border border-border" onPress={() => navigation.goBack()}>
-            <ArrowLeft color="#071629" size={19} strokeWidth={1.8} />
-          </Pressable>
-          <View>
-            <Text className="text-xl font-extrabold text-navy">Clientes</Text>
-            <Text className="text-[12px] text-muted">Cadastre e acompanhe seus clientes.</Text>
-          </View>
-        </View>
-        <Pressable accessibilityLabel="Novo cliente" className="h-10 w-10 items-center justify-center rounded-xl bg-navy" onPress={() => setFormOpen((current) => !current)}>
-          <Plus color="#D4A64A" size={20} strokeWidth={2} />
-        </Pressable>
-      </View>
+      <ScreenHeader
+        title="Clientes"
+        onBack={() => navigation.goBack()}
+        actions={<FormToggle label="Novo cliente" open={formOpen} onPress={() => setFormOpen((current) => !current)} />}
+      />
 
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled">
         <View className="mx-auto w-full max-w-2xl">
           {formOpen ? (
             <Card className="mb-5 p-5">
-              <Text className="mb-1 text-[18px] font-extrabold text-navy">Novo cliente</Text>
-              <Text className="mb-5 text-[13px] leading-5 text-muted">Informe os dados básicos para criar o cadastro.</Text>
+              <Text className="mb-4 text-[18px] font-extrabold text-foreground">Novo cliente</Text>
 
-              <Text className="mb-1.5 text-[14px] font-bold text-navy">Nome completo</Text>
-              <View className="mb-4 flex-row items-center rounded-xl border border-border bg-input px-3.5">
-                <UserRound color="#6D7784" size={18} strokeWidth={1.8} />
-                <Input className="border-0 bg-transparent px-3" onChangeText={setName} placeholder="Nome do cliente" value={name} />
-              </View>
+              <FieldLabel>Nome completo</FieldLabel>
+              <Input accessibilityLabel="Nome completo" className="mb-4" onChangeText={setName} placeholder="Nome do cliente" value={name} />
 
               <View className="mb-4">
-                <Text className="mb-1.5 text-[14px] font-bold text-navy">Telefone com DDD</Text>
-                <View className="flex-row items-center rounded-xl border border-border bg-input px-3.5">
-                  <Phone color="#6D7784" size={18} strokeWidth={1.8} />
-                  <Input
-                    accessibilityLabel="Telefone com DDD"
-                    autoComplete="tel-national"
-                    className="border-0 bg-transparent px-3"
-                    keyboardType="phone-pad"
-                    maxLength={15}
-                    onChangeText={(value) => setPhone(formatPhone(value))}
-                    placeholder="(00) 00000-0000"
-                    value={phone}
-                  />
-                </View>
+                <FieldLabel>Telefone com DDD</FieldLabel>
+                <Input
+                  accessibilityLabel="Telefone com DDD"
+                  autoComplete="tel-national"
+                  keyboardType="phone-pad"
+                  maxLength={15}
+                  onChangeText={(value) => setPhone(formatPhone(value))}
+                  placeholder="(00) 00000-0000"
+                  value={phone}
+                />
               </View>
 
               <View className="mb-4 flex-row items-center justify-between rounded-xl border border-border bg-input px-4 py-3">
                 <View className="flex-1 pr-3">
-                  <Text className="text-[14px] font-bold text-navy">Possui indicação?</Text>
+                  <Text className="text-[14px] font-bold text-foreground">Possui indicação?</Text>
                   <Text className="mt-1 text-[12px] text-muted">Ative para informar quem indicou.</Text>
                 </View>
-                <Pressable accessibilityRole="switch" accessibilityState={{ checked: hasReferral }} onPress={() => setHasReferral((current) => !current)}>
-                  <View className={`h-7 w-12 justify-center rounded-full px-1 ${hasReferral ? 'bg-navy' : 'bg-border'}`}>
-                    <View className={`h-5 w-5 rounded-full bg-white ${hasReferral ? 'self-end' : 'self-start'}`} />
-                  </View>
-                </Pressable>
+                <Switch accessibilityLabel="Possui indicação?" value={hasReferral} onValueChange={setHasReferral} trackColor={{ false: colors.fieldBorder, true: colors.primary }} />
               </View>
 
               {hasReferral ? (
                 <View className="mb-4">
-                  <Text className="mb-1.5 text-[14px] font-bold text-navy">Indicação</Text>
-                  <Input onChangeText={setReferral} placeholder="Nome de quem indicou" value={referral} />
+                  <FieldLabel>Indicação</FieldLabel>
+                  <Input accessibilityLabel="Indicação" onChangeText={setReferral} placeholder="Nome de quem indicou" value={referral} />
                 </View>
               ) : null}
 
@@ -142,17 +124,17 @@ export function CustomersScreen({ navigation, route }: Props) {
 
           <View className="mb-4 flex-row items-center justify-between">
             <View className="flex-row items-center">
-              <UsersRound color="#D4A64A" size={19} strokeWidth={1.8} />
-              <Text className="ml-2 text-[16px] font-extrabold text-navy">Clientes cadastrados</Text>
+
+              <Text className="text-[16px] font-bold text-foreground">Clientes cadastrados</Text>
             </View>
             <Text className="text-[13px] font-bold text-muted">{customers.length}</Text>
           </View>
 
-          {loading ? <ActivityIndicator color="#D4A64A" size="large" /> : null}
+          {loading ? <ActivityIndicator color={colors.primary} size="large" /> : null}
           {!loading && customers.length === 0 ? (
             <Card className="items-center p-8">
-              <UsersRound color="#6D7784" size={28} strokeWidth={1.5} />
-              <Text className="mt-3 text-[15px] font-bold text-navy">Nenhum cliente ainda</Text>
+              <UsersRound color={colors.muted} size={28} strokeWidth={1.5} />
+              <Text className="mt-3 text-[15px] font-bold text-foreground">Nenhum cliente ainda</Text>
               <Text className="mt-1 text-center text-[13px] leading-5 text-muted">Use o botão + para cadastrar o primeiro cliente.</Text>
             </Card>
           ) : null}
@@ -161,13 +143,11 @@ export function CustomersScreen({ navigation, route }: Props) {
             <Card className="mb-3 p-4" key={customer.id}>
               <View className="flex-row items-center justify-between">
                 <View className="flex-1">
-                  <Text className="text-[16px] font-extrabold text-navy">{customer.name}</Text>
+                  <Text className="text-[16px] font-extrabold text-foreground">{customer.name}</Text>
                   {customer.phone ? <Text className="mt-1 text-[12px] text-muted">{formatPhone(customer.phone)}</Text> : null}
                   {customer.hasReferral ? <Text className="mt-1 text-[12px] text-muted">Indicação: {customer.referral}</Text> : null}
                 </View>
-                <View className="h-9 w-9 items-center justify-center rounded-xl bg-gold/20">
-                  <UserRound color="#071629" size={18} strokeWidth={1.8} />
-                </View>
+
               </View>
             </Card>
           )) : null}

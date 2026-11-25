@@ -1,17 +1,19 @@
+import { useTheme } from '../theme/ThemeProvider';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
 import { randomUUID } from 'expo-crypto';
 import { getDocumentAsync, type DocumentPickerAsset } from 'expo-document-picker';
 import { File as LocalFile } from 'expo-file-system';
-import { ArrowLeft, CalendarClock, CheckCircle2, ChevronDown, ChevronUp, Download, HandCoins, History, Paperclip, Percent, Plus, WalletCards, X } from 'lucide-react-native';
+import { CheckCircle2, ChevronDown, ChevronUp, Download, HandCoins, History, Paperclip, Percent, X } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Button, ButtonText } from '../components/ui/button';
 import { Card } from '../components/ui/card';
-import { Input } from '../components/ui/input';
+import { FieldLabel, fieldControl, Input } from '../components/ui/input';
+import { FormToggle, ScreenHeader } from '../components/ui/screen-header';
 import { Text } from '../components/ui/text';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { createLoan, downloadLoanPaymentReceipt, getCustomers, getLoans, registerLoanPayment, type Customer, type Loan, type LoanPayment, type LoanPaymentType } from '../services/api';
-import { formatCurrency, formatDate } from '../lib/format';
+import { formatCurrency, formatDate, parseMoneyCents } from '../lib/format';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Loans'>;
 type PendingPayment = { loan: Loan; type: LoanPaymentType; requestId: string };
@@ -38,6 +40,7 @@ function discardPickedReceipt(receipt: DocumentPickerAsset) {
 }
 
 export function LoansScreen({ navigation, route }: Props) {
+  const { colors } = useTheme();
   const { token } = route.params;
   const [loans, setLoans] = useState<Loan[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -92,7 +95,7 @@ export function LoansScreen({ navigation, route }: Props) {
       setSaving(true);
       await createLoan(token, {
         customerId: selectedCustomer.id,
-        principalAmount: parseNumber(principalAmount),
+        principalAmount: (parseMoneyCents(principalAmount) ?? 0) / 100,
         dueDay: Number(dueDay),
         monthlyInterestRatePercent: parseNumber(monthlyInterest),
         lateDailyInterestRatePercent: parseNumber(lateDailyInterest),
@@ -177,74 +180,57 @@ export function LoansScreen({ navigation, route }: Props) {
 
   return (
     <View className="flex-1 bg-background">
-      <View className="flex-row items-center justify-between border-b border-border bg-surface px-5 pb-4 pt-5">
-        <View className="flex-row items-center">
-          <Pressable accessibilityLabel="Voltar" className="mr-3 h-10 w-10 items-center justify-center rounded-xl border border-border" onPress={() => navigation.goBack()}>
-            <ArrowLeft color="#071629" size={19} strokeWidth={1.8} />
-          </Pressable>
-          <View>
-            <Text className="text-xl font-extrabold text-navy">Empréstimos</Text>
-            <Text className="text-[12px] text-muted">Acompanhe saldo, juros e pagamentos.</Text>
-          </View>
-        </View>
-        <Pressable accessibilityLabel="Novo empréstimo" className="h-10 w-10 items-center justify-center rounded-xl bg-navy" onPress={() => setFormOpen((current) => !current)}>
-          <Plus color="#D4A64A" size={20} strokeWidth={2} />
-        </Pressable>
-      </View>
+      <ScreenHeader
+        title="Empréstimos"
+        onBack={() => navigation.goBack()}
+        actions={<FormToggle label="Novo empréstimo" open={formOpen} onPress={() => setFormOpen((current) => !current)} />}
+      />
 
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled">
         <View className="mx-auto w-full max-w-2xl">
           {formOpen ? (
             <Card className="mb-5 p-5">
-              <Text className="mb-1 text-[18px] font-extrabold text-navy">Novo empréstimo</Text>
-              <Text className="mb-5 text-[13px] leading-5 text-muted">Defina o cliente, vencimento e as regras de juros.</Text>
+              <Text className="mb-4 text-[18px] font-extrabold text-foreground">Novo empréstimo</Text>
 
-              <Text className="mb-1.5 text-[14px] font-bold text-navy">Cliente</Text>
-              <Pressable className="mb-3 flex-row items-center justify-between rounded-xl border border-border bg-input px-4 py-3.5" onPress={() => setPickerOpen((current) => !current)}>
-                <View className="flex-row items-center">
-                  <WalletCards color="#6D7784" size={18} strokeWidth={1.8} />
-                  <Text className={`ml-3 text-[15px] ${selectedCustomer ? 'text-navy' : 'text-muted'}`}>{selectedCustomer?.name ?? 'Selecione um cliente'}</Text>
-                </View>
-                <ChevronDown color="#6D7784" size={18} strokeWidth={1.8} />
+              <FieldLabel>Cliente</FieldLabel>
+              <Pressable
+                accessibilityLabel="Cliente"
+                accessibilityRole="button"
+                accessibilityState={{ expanded: pickerOpen }}
+                className={`${fieldControl} mb-3 flex-row items-center justify-between gap-2 px-3.5 py-3`}
+                onPress={() => setPickerOpen((current) => !current)}
+              >
+                <Text className={`min-w-0 flex-1 ${selectedCustomer ? 'text-foreground' : 'text-muted'}`}>{selectedCustomer?.name ?? 'Selecione um cliente'}</Text>
+                <ChevronDown color={colors.muted} size={18} />
               </Pressable>
 
               {pickerOpen ? (
                 <View className="mb-4 rounded-xl border border-border bg-surface p-2">
                   {customers.length === 0 ? <Text className="p-3 text-[13px] text-muted">Cadastre um cliente primeiro.</Text> : null}
                   {customers.map((customer) => (
-                    <Pressable className="rounded-lg px-3 py-3" key={customer.id} onPress={() => { setSelectedCustomer(customer); setPickerOpen(false); }}>
-                      <Text className="text-[14px] font-semibold text-navy">{customer.name}</Text>
+                    <Pressable accessibilityRole="button" className="min-h-[44px] justify-center rounded-lg px-3 py-3 pressed:bg-selected" key={customer.id} onPress={() => { setSelectedCustomer(customer); setPickerOpen(false); }}>
+                      <Text className="text-[14px] font-semibold text-foreground">{customer.name}</Text>
                     </Pressable>
                   ))}
                 </View>
               ) : null}
 
-              <Text className="mb-1.5 text-[14px] font-bold text-navy">Valor do empréstimo</Text>
-              <View className="mb-4 flex-row items-center rounded-xl border border-border bg-input px-3.5">
-                <HandCoins color="#6D7784" size={18} strokeWidth={1.8} />
-                <Input className="border-0 bg-transparent px-3" keyboardType="decimal-pad" onChangeText={setPrincipalAmount} placeholder="Ex.: 1000,00" value={principalAmount} />
-              </View>
+              <FieldLabel>Valor do empréstimo</FieldLabel>
+              <Input accessibilityLabel="Valor do empréstimo" className="mb-4" keyboardType="decimal-pad" onChangeText={setPrincipalAmount} placeholder="Ex.: 1.000,00" value={principalAmount} />
 
-              <View className="flex-row gap-3">
-                <View className="mb-4 flex-1">
-                  <Text className="mb-1.5 text-[14px] font-bold text-navy">Dia do vencimento</Text>
-                  <Input keyboardType="number-pad" onChangeText={setDueDay} placeholder="Ex.: 10" value={dueDay} />
+              <View className="flex-row flex-wrap gap-x-3">
+                <View className="mb-4 min-w-[140px] flex-1">
+                  <FieldLabel>Dia do vencimento</FieldLabel>
+                  <Input accessibilityLabel="Dia do vencimento" keyboardType="number-pad" onChangeText={setDueDay} placeholder="Ex.: 10" value={dueDay} />
                 </View>
-                <View className="mb-4 flex-1">
-                  <Text className="mb-1.5 text-[14px] font-bold text-navy">Juros mensal (%)</Text>
-                  <View className="flex-row items-center rounded-xl border border-border bg-input px-3">
-                    <Input className="border-0 bg-transparent px-1" keyboardType="decimal-pad" onChangeText={setMonthlyInterest} placeholder="Ex.: 10" value={monthlyInterest} />
-                    <Percent color="#6D7784" size={17} strokeWidth={1.8} />
-                  </View>
+                <View className="mb-4 min-w-[140px] flex-1">
+                  <FieldLabel>Juros mensais (%)</FieldLabel>
+                  <Input accessibilityLabel="Juros mensais (%)" keyboardType="decimal-pad" onChangeText={setMonthlyInterest} placeholder="Ex.: 10" value={monthlyInterest} />
                 </View>
               </View>
 
-              <Text className="mb-1.5 text-[14px] font-bold text-navy">Juros por atraso ao dia (%)</Text>
-              <View className="mb-4 flex-row items-center rounded-xl border border-border bg-input px-3">
-                <CalendarClock color="#6D7784" size={18} strokeWidth={1.8} />
-                <Input className="border-0 bg-transparent px-3" keyboardType="decimal-pad" onChangeText={setLateDailyInterest} placeholder="Ex.: 0,5" value={lateDailyInterest} />
-                <Percent color="#6D7784" size={17} strokeWidth={1.8} />
-              </View>
+              <FieldLabel>Juros por atraso ao dia (%)</FieldLabel>
+              <Input accessibilityLabel="Juros por atraso ao dia (%)" className="mb-4" keyboardType="decimal-pad" onChangeText={setLateDailyInterest} placeholder="Ex.: 0,5" value={lateDailyInterest} />
 
               {error ? <Text className="mb-3 text-[13px] text-destructive">{error}</Text> : null}
               <Button disabled={saving} onPress={handleCreate}>
@@ -255,18 +241,18 @@ export function LoansScreen({ navigation, route }: Props) {
 
           <View className="mb-4 flex-row items-center justify-between">
             <View className="flex-row items-center">
-              <HandCoins color="#D4A64A" size={19} strokeWidth={1.8} />
-              <Text className="ml-2 text-[16px] font-extrabold text-navy">Empréstimos cadastrados</Text>
+
+              <Text className="text-[16px] font-bold text-foreground">Empréstimos cadastrados</Text>
             </View>
             <Text className="text-[13px] font-bold text-muted">{loans.length}</Text>
           </View>
 
           {!formOpen && error ? <Text className="mb-3 text-[13px] text-destructive">{error}</Text> : null}
-          {loading ? <ActivityIndicator color="#D4A64A" size="large" /> : null}
+          {loading ? <ActivityIndicator color={colors.primary} size="large" /> : null}
           {!loading && loans.length === 0 ? (
             <Card className="items-center p-8">
-              <HandCoins color="#6D7784" size={28} strokeWidth={1.5} />
-              <Text className="mt-3 text-[15px] font-bold text-navy">Nenhum empréstimo ainda</Text>
+              <HandCoins color={colors.muted} size={28} strokeWidth={1.5} />
+              <Text className="mt-3 text-[15px] font-bold text-foreground">Nenhum empréstimo ainda</Text>
               <Text className="mt-1 text-center text-[13px] leading-5 text-muted">Use o botão + para cadastrar o primeiro empréstimo.</Text>
             </Card>
           ) : null}
@@ -280,14 +266,14 @@ export function LoansScreen({ navigation, route }: Props) {
                 <Pressable onPress={() => setExpandedLoanId((current) => current === loan.id ? '' : loan.id)}>
                   <View className="flex-row items-start justify-between">
                     <View className="flex-1 pr-3">
-                      <Text className="text-[16px] font-extrabold text-navy">{loan.customerName}</Text>
+                      <Text className="text-[16px] font-extrabold text-foreground">{loan.customerName}</Text>
                       <Text className="mt-1 text-[12px] text-muted">Vencimento: dia {loan.dueDay} · {loan.daysLate > 0 ? `${loan.daysLate} dias em atraso` : 'em dia'}</Text>
                     </View>
                     <View className="flex-row items-center gap-2">
-                      <View className={`rounded-full px-2.5 py-1 ${paid ? 'bg-navy' : loan.daysLate > 0 ? 'bg-destructive/10' : 'bg-gold/20'}`}>
-                        <Text className={`text-[11px] font-bold ${paid ? 'text-white' : loan.daysLate > 0 ? 'text-destructive' : 'text-navy'}`}>{paid ? 'Pago' : loan.daysLate > 0 ? 'Atrasado' : 'Em dia'}</Text>
+                      <View className={`rounded-full px-2.5 py-1 ${paid ? 'bg-primary' : loan.daysLate > 0 ? 'bg-destructive/10' : 'bg-selected'}`}>
+                        <Text className={`text-[11px] font-bold ${paid ? 'text-primary-foreground' : loan.daysLate > 0 ? 'text-destructive' : 'text-selected-foreground'}`}>{paid ? 'Pago' : loan.daysLate > 0 ? 'Atrasado' : 'Em dia'}</Text>
                       </View>
-                      {expandedLoanId === loan.id ? <ChevronUp color="#6D7784" size={18} /> : <ChevronDown color="#6D7784" size={18} />}
+                      {expandedLoanId === loan.id ? <ChevronUp color={colors.muted} size={18} /> : <ChevronDown color={colors.muted} size={18} />}
                     </View>
                   </View>
                 </Pressable>
@@ -295,40 +281,40 @@ export function LoansScreen({ navigation, route }: Props) {
                 <View className="my-4 flex-row gap-3 border-y border-border py-3">
                   <View className="flex-1">
                     <Text className="text-[11px] text-muted">Principal</Text>
-                    <Text className="mt-1 text-[15px] font-extrabold text-navy">{formatCurrency(loan.principalAmount)}</Text>
+                    <Text className="mt-1 text-[15px] font-extrabold text-foreground">{formatCurrency(loan.principalAmount)}</Text>
                   </View>
                   <View className="flex-1">
                     <Text className="text-[11px] text-muted">Juros atual</Text>
-                    <Text className="mt-1 text-[15px] font-extrabold text-navy">{formatCurrency(loan.interestDue)}</Text>
+                    <Text className="mt-1 text-[15px] font-extrabold text-foreground">{formatCurrency(loan.interestDue)}</Text>
                   </View>
                   <View className="flex-1">
                     <Text className="text-[11px] text-muted">Total</Text>
-                    <Text className="mt-1 text-[15px] font-extrabold text-navy">{formatCurrency(loan.totalDue)}</Text>
+                    <Text className="mt-1 text-[15px] font-extrabold text-foreground">{formatCurrency(loan.totalDue)}</Text>
                   </View>
                 </View>
 
                 {expandedLoanId === loan.id ? (
                   <View className="mb-4 rounded-xl border border-border bg-background p-4">
                     <View className="mb-3 flex-row items-center">
-                      <History color="#D4A64A" size={18} strokeWidth={1.8} />
-                      <Text className="ml-2 text-[14px] font-extrabold text-navy">Histórico do empréstimo</Text>
+                      <History color={colors.selectedForeground} size={18} strokeWidth={1.8} />
+                      <Text className="ml-2 text-[14px] font-extrabold text-foreground">Histórico do empréstimo</Text>
                     </View>
-                    {paid && fullPayment ? <Text className="mb-3 text-[13px] font-bold text-[#1A7F5A]">Empréstimo finalizado em {formatDate(fullPayment.paidAtUtc)}</Text> : null}
+                    {paid && fullPayment ? <Text className="mb-3 text-[13px] font-bold text-success">Empréstimo finalizado em {formatDate(fullPayment.paidAtUtc)}</Text> : null}
                     {payments.length === 0 ? <Text className="text-[12px] text-muted">Nenhum pagamento registrado ainda.</Text> : null}
                     {payments.map((payment) => (
                       <View className="mb-3 border-b border-border pb-3 last:mb-0 last:border-b-0 last:pb-0" key={payment.id ?? `${payment.type}-${payment.paidAtUtc}`}>
                         <View className="flex-row items-start justify-between">
                           <View className="flex-1 pr-3">
-                            <Text className="text-[14px] font-bold text-navy">{payment.type === 'Full' ? 'Empréstimo finalizado' : 'Pagamento somente de juros'}</Text>
+                            <Text className="text-[14px] font-bold text-foreground">{payment.type === 'Full' ? 'Empréstimo finalizado' : 'Pagamento somente de juros'}</Text>
                             <Text className="mt-1 text-[12px] text-muted">{formatDate(payment.paidAtUtc)}</Text>
                           </View>
-                          <Text className="text-[13px] font-extrabold text-navy">{formatCurrency(payment.amount)}</Text>
+                          <Text className="text-[13px] font-extrabold text-foreground">{formatCurrency(payment.amount)}</Text>
                         </View>
                         <Text className="mt-2 text-[11px] text-muted">Juros: {formatCurrency(payment.interestAmount)} · Principal: {formatCurrency(payment.principalAmount)}</Text>
                         {payment.receiptName ? (
                           <Pressable accessibilityRole="button" className="mt-2 flex-row items-center gap-2 py-1" disabled={!!downloadingPaymentId} onPress={() => handleDownload(loan.id, payment)}>
-                            <Download color="#D4A64A" size={16} strokeWidth={1.8} />
-                            <Text className="text-[12px] font-bold text-navy">{downloadingPaymentId === payment.id ? 'Baixando...' : 'Baixar comprovante'}</Text>
+                            <Download color={colors.selectedForeground} size={16} strokeWidth={1.8} />
+                            <Text className="text-[12px] font-bold text-foreground">{downloadingPaymentId === payment.id ? 'Baixando...' : 'Baixar comprovante'}</Text>
                           </Pressable>
                         ) : null}
                         {downloadError?.paymentId === payment.id ? <Text accessibilityLiveRegion="polite" className="mt-1 text-[12px] text-destructive">{downloadError.message}</Text> : null}
@@ -340,11 +326,11 @@ export function LoansScreen({ navigation, route }: Props) {
                 {!paid ? (
                   <View className="flex-row gap-3">
                     <Button accessibilityRole="button" className="flex-1 flex-row gap-2" onPress={() => openPayment(loan, 'InterestOnly')} variant="outline">
-                      <Percent color="#071629" size={16} strokeWidth={1.8} />
+                      <Percent color={colors.foreground} size={16} strokeWidth={1.8} />
                       <ButtonText variant="outline">Pagar juros</ButtonText>
                     </Button>
                     <Button accessibilityRole="button" className="flex-1 flex-row gap-2" onPress={() => openPayment(loan, 'Full')}>
-                      <CheckCircle2 color="#071629" size={16} strokeWidth={1.8} />
+                      <CheckCircle2 color={colors.primaryForeground} size={16} strokeWidth={1.8} />
                       <ButtonText>Finalizar pago</ButtonText>
                     </Button>
                   </View>
@@ -359,22 +345,22 @@ export function LoansScreen({ navigation, route }: Props) {
         <Modal animationType="fade" onRequestClose={() => { if (!savingPayment && !pickingReceipt) closePayment(); }} transparent>
           <View className="flex-1 items-center justify-center bg-black/50 p-5">
             <Card className="w-full max-w-md p-5">
-              <Text accessibilityRole="header" className="text-[18px] font-extrabold text-navy">{pendingPayment.type === 'Full' ? 'Finalizar empréstimo' : 'Pagar somente os juros'}</Text>
+              <Text accessibilityRole="header" className="text-[18px] font-extrabold text-foreground">{pendingPayment.type === 'Full' ? 'Finalizar empréstimo' : 'Pagar somente os juros'}</Text>
               <Text className="mb-5 mt-1 text-[14px] text-muted">{pendingPayment.loan.customerName}</Text>
 
-              <Text className="mb-1 font-bold text-navy">Comprovante de pagamento (opcional)</Text>
+              <Text className="mb-1 font-bold text-foreground">Comprovante de pagamento (opcional)</Text>
               <Text className="mb-3 text-[12px] text-muted">PDF, JPG ou PNG de até 5 MB.</Text>
               {receipt ? (
                 <View className="mb-3 flex-row items-center gap-2 rounded-xl border border-border bg-input px-3 py-2">
-                  <Paperclip color="#6D7784" size={16} strokeWidth={1.8} />
-                  <Text className="flex-1 text-[13px] text-navy" numberOfLines={2}>{receipt.name}</Text>
+                  <Paperclip color={colors.muted} size={16} strokeWidth={1.8} />
+                  <Text className="flex-1 text-[13px] text-foreground" numberOfLines={2}>{receipt.name}</Text>
                   <Pressable accessibilityLabel="Remover comprovante" accessibilityRole="button" className="p-2" disabled={savingPayment || pickingReceipt} onPress={() => { setReceipt(null); setPaymentError(''); }}>
-                    <X color="#6D7784" size={18} strokeWidth={1.8} />
+                    <X color={colors.muted} size={18} strokeWidth={1.8} />
                   </Pressable>
                 </View>
               ) : null}
               <Button accessibilityRole="button" className="mb-4 flex-row gap-2" disabled={savingPayment || pickingReceipt} onPress={chooseReceipt} variant="outline">
-                <Paperclip color="#6D7784" size={16} strokeWidth={1.8} />
+                <Paperclip color={colors.muted} size={16} strokeWidth={1.8} />
                 <ButtonText variant="outline">{pickingReceipt ? 'Selecionando...' : receipt ? 'Trocar arquivo' : 'Selecionar arquivo'}</ButtonText>
               </Button>
 

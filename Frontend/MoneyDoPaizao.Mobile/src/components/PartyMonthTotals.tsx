@@ -16,7 +16,7 @@ export function PartyMonthTotals({ month }: { month: PartyMonth }) {
       {totals.map(([label, value]) => (
         <Card className="min-w-[88px] flex-1 p-3" key={label}>
           <Text className="text-xs text-muted">{label}</Text>
-          <Text className="mt-1 text-sm font-extrabold text-navy">{formatCurrency(value)}</Text>
+          <Text className="mt-1 text-sm font-extrabold text-foreground">{formatCurrency(value)}</Text>
         </Card>
       ))}
     </View>

@@ -1,26 +1,10 @@
-import { createContext, PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { Platform } from 'react-native';
-import { AppearanceSettings, getAppearanceSettings, updateAppearanceSettings } from '../services/api';
+import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { vars } from 'nativewind';
+import { Platform, View } from 'react-native';
+import { type AppearanceSettings, getAppearanceSettings, updateAppearanceSettings } from '../services/api';
+import { buildColors, colorVariables, DEFAULT_APPEARANCE } from './palette';
 
-export const DEFAULT_APPEARANCE: AppearanceSettings = {
-  useCustomTheme: false,
-  primaryColor: '#071629',
-  secondaryColor: '#D4A64A',
-  isDarkMode: false,
-};
-
-export type ThemeColors = {
-  background: string;
-  surface: string;
-  foreground: string;
-  muted: string;
-  border: string;
-  input: string;
-  primary: string;
-  primaryForeground: string;
-  secondary: string;
-  secondaryForeground: string;
-};
+export type ThemeColors = ReturnType<typeof buildColors>;
 
 type ThemeContextValue = {
   appearance: AppearanceSettings;
@@ -33,101 +17,64 @@ type ThemeContextValue = {
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
-function hexToRgb(hex: string) {
-  const normalized = hex.replace('#', '');
-  const value = normalized.length === 3 ? normalized.split('').map((part) => `${part}${part}`).join('') : normalized;
-  const number = Number.parseInt(value, 16);
-  return `${(number >> 16) & 255} ${(number >> 8) & 255} ${number & 255}`;
-}
-
-function contrastColor(hex: string) {
-  const normalized = hex.replace('#', '');
-  const number = Number.parseInt(normalized, 16);
-  const red = (number >> 16) & 255;
-  const green = (number >> 8) & 255;
-  const blue = number & 255;
-  return red * 299 + green * 587 + blue * 114 > 150000 ? '#071629' : '#FFFFFF';
-}
-
-function buildColors(appearance: AppearanceSettings): ThemeColors {
-  const primary = appearance.useCustomTheme ? appearance.primaryColor : DEFAULT_APPEARANCE.primaryColor;
-  const secondary = appearance.useCustomTheme ? appearance.secondaryColor : DEFAULT_APPEARANCE.secondaryColor;
-  const dark = appearance.isDarkMode;
-
-  return {
-    background: dark ? '#071629' : '#F6F8FB',
-    surface: dark ? '#10243B' : '#FFFFFF',
-    foreground: dark ? '#F7F9FC' : '#071629',
-    muted: dark ? '#A9B5C4' : '#6D7784',
-    border: dark ? '#29405A' : '#E2E7ED',
-    input: dark ? '#0C1D31' : '#FBFCFE',
-    primary,
-    primaryForeground: contrastColor(primary),
-    secondary,
-    secondaryForeground: contrastColor(secondary),
-  };
-}
-
-function applyWebTheme(colors: ThemeColors) {
-  if (Platform.OS !== 'web' || typeof document === 'undefined') return;
-
-  const root = document.documentElement;
-  const values: Record<string, string> = {
-    '--color-background': hexToRgb(colors.background),
-    '--color-surface': hexToRgb(colors.surface),
-    '--color-foreground': hexToRgb(colors.foreground),
-    '--color-muted': hexToRgb(colors.muted),
-    '--color-border': hexToRgb(colors.border),
-    '--color-input': hexToRgb(colors.input),
-    '--color-primary': hexToRgb(colors.primary),
-    '--color-primary-foreground': hexToRgb(colors.primaryForeground),
-    '--color-secondary': hexToRgb(colors.secondary),
-    '--color-secondary-foreground': hexToRgb(colors.secondaryForeground),
-  };
-
-  Object.entries(values).forEach(([name, value]) => root.style.setProperty(name, value));
-  root.style.colorScheme = colors.background === '#071629' ? 'dark' : 'light';
-  document.body.style.backgroundColor = colors.background;
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', colors.primary);
-}
-
 export function ThemeProvider({ children }: PropsWithChildren) {
-  const [appearance, setAppearance] = useState<AppearanceSettings>(DEFAULT_APPEARANCE);
+  const [appearance, setAppearance] = useState(DEFAULT_APPEARANCE);
   const [loading, setLoading] = useState(false);
+  const revision = useRef(0);
   const colors = useMemo(() => buildColors(appearance), [appearance]);
+  const variables = useMemo(() => colorVariables(colors), [colors]);
+  const nativeTheme = useMemo(() => vars(variables), [variables]);
 
   useEffect(() => {
-    applyWebTheme(colors);
-  }, [colors]);
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+
+    const { style } = document.documentElement;
+    Object.entries(variables).forEach(([name, value]) => style.setProperty(name, String(value)));
+    style.colorScheme = appearance.isDarkMode ? 'dark' : 'light';
+    style.backgroundColor = colors.background;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', colors.background);
+  }, [appearance.isDarkMode, colors.background, variables]);
 
   const loadTheme = useCallback(async (token: string) => {
+    const request = ++revision.current;
     setLoading(true);
     try {
-      setAppearance(await getAppearanceSettings(token));
+      const saved = await getAppearanceSettings(token);
+      if (request === revision.current) setAppearance(saved);
     } catch {
-      setAppearance(DEFAULT_APPEARANCE);
+      // A failed refresh leaves the active appearance in place.
     } finally {
-      setLoading(false);
+      if (request === revision.current) setLoading(false);
     }
   }, []);
 
   const saveTheme = useCallback(async (token: string, next: AppearanceSettings) => {
+    const request = ++revision.current;
     setLoading(true);
     try {
-      const updated = await updateAppearanceSettings(token, next);
-      setAppearance(updated);
-      return updated;
+      const saved = await updateAppearanceSettings(token, next);
+      if (request === revision.current) setAppearance(saved);
+      return saved;
     } finally {
-      setLoading(false);
+      if (request === revision.current) setLoading(false);
     }
   }, []);
 
-  const resetTheme = useCallback(() => setAppearance(DEFAULT_APPEARANCE), []);
+  const resetTheme = useCallback(() => {
+    revision.current += 1;
+    setAppearance(DEFAULT_APPEARANCE);
+    setLoading(false);
+  }, []);
 
-  const value = useMemo(() => ({ appearance, colors, loading, loadTheme, saveTheme, resetTheme }), [appearance, colors, loading, loadTheme, resetTheme, saveTheme]);
+  const value = useMemo(() => ({ appearance, colors, loading, loadTheme, saveTheme, resetTheme }), [appearance, colors, loading, loadTheme, saveTheme, resetTheme]);
 
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+  return (
+    <ThemeContext.Provider value={value}>
+      <View className="flex-1" style={Platform.OS === 'web' ? undefined : nativeTheme}>
+        {children}
+      </View>
+    </ThemeContext.Provider>
+  );
 }
 
 export function useTheme() {
