@@ -98,10 +98,10 @@ export function PartyDashboardScreen({ navigation, route }: Props) {
             <Text className="mt-1 text-2xl font-extrabold text-navy">Olá, {userName}.</Text>
           </View>
           <View className="flex-row flex-wrap gap-2">
-            <Button className="min-w-[130px] flex-1 flex-row gap-2" onPress={() => navigation.navigate('PartyEvents', { token, month: currentMonth, create: true })}>
+            <Button accessibilityRole="button" className="min-w-[130px] flex-1 flex-row gap-2" onPress={() => navigation.navigate('PartyEvents', { token, month: currentMonth, create: true })}>
               <CalendarPlus color="#071629" size={18} /><ButtonText>Nova festa</ButtonText>
             </Button>
-            <Button className="min-w-[130px] flex-1 flex-row gap-2" variant="outline" onPress={() => openMonth(currentMonth)}>
+            <Button accessibilityRole="button" className="min-w-[130px] flex-1 flex-row gap-2" variant="outline" onPress={() => openMonth(currentMonth)}>
               <CalendarDays color="#071629" size={18} /><ButtonText variant="outline">Ver agenda</ButtonText>
             </Button>
           </View>

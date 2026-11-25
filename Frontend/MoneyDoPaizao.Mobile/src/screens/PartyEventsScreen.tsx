@@ -84,11 +84,11 @@ function EventCard({ event, token, today, onUpdate }: {
       {editing ? (
         <View className="gap-2 border-t border-border pt-3">
           <Text className="text-sm font-bold text-navy">Total recebido, incluindo o sinal</Text>
-          <Input accessibilityLabel="Total recebido, incluindo o sinal" keyboardType="decimal-pad" onChangeText={setAmount} value={amount} />
+          <Input accessibilityLabel="Total recebido, incluindo o sinal" className="flex-none" keyboardType="decimal-pad" onChangeText={setAmount} value={amount} />
           {error ? <Text accessibilityRole="alert" className="text-sm text-destructive">{error}</Text> : null}
           <View className="flex-row flex-wrap gap-2">
-            <Button disabled={saving} onPress={saveReceived}><ButtonText>{saving ? 'Salvando...' : 'Salvar recebimento'}</ButtonText></Button>
-            <Button disabled={saving} variant="outline" onPress={() => setEditing(false)}><ButtonText variant="outline">Cancelar</ButtonText></Button>
+            <Button accessibilityRole="button" disabled={saving} onPress={saveReceived}><ButtonText>{saving ? 'Salvando...' : 'Salvar recebimento'}</ButtonText></Button>
+            <Button accessibilityRole="button" disabled={saving} variant="outline" onPress={() => setEditing(false)}><ButtonText variant="outline">Cancelar</ButtonText></Button>
           </View>
         </View>
       ) : (

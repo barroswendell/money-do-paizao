@@ -68,14 +68,14 @@ export function PartyProductsScreen({ navigation, route }: Props) {
             <Text className="text-lg font-extrabold text-navy">Cadastrar produto</Text>
             <View>
               <Text className="mb-1.5 font-bold text-navy">Nome</Text>
-              <Input accessibilityLabel="Nome do produto" maxLength={160} onChangeText={setName} value={name} />
+              <Input accessibilityLabel="Nome do produto" className="flex-none" maxLength={160} onChangeText={setName} value={name} />
             </View>
             <View>
               <Text className="mb-1.5 font-bold text-navy">Observação (opcional)</Text>
-              <Input accessibilityLabel="Observação do produto" className="min-h-[84px] py-3" maxLength={500} multiline onChangeText={setNotes} textAlignVertical="top" value={notes} />
+              <Input accessibilityLabel="Observação do produto" className="min-h-[84px] flex-none py-3" maxLength={500} multiline onChangeText={setNotes} textAlignVertical="top" value={notes} />
             </View>
             {error ? <Text accessibilityRole="alert" className="text-sm text-destructive">{error}</Text> : null}
-            <Button disabled={loading || saving} onPress={handleCreate}>
+            <Button accessibilityRole="button" disabled={loading || saving} onPress={handleCreate}>
               <ButtonText>{saving ? 'Salvando...' : 'Cadastrar produto'}</ButtonText>
             </Button>
           </Card>

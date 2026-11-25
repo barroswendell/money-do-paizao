@@ -153,7 +153,7 @@ export function PartyEventForm({ token, customers, themes, products, ready, onCr
       </View>
       <View>
         <FieldLabel>Valor base da festa</FieldLabel>
-        <Input accessibilityLabel="Valor base da festa" keyboardType="decimal-pad" onChangeText={setBaseAmount} placeholder="0,00" value={baseAmount} />
+        <Input accessibilityLabel="Valor base da festa" className="flex-none" keyboardType="decimal-pad" onChangeText={setBaseAmount} placeholder="0,00" value={baseAmount} />
       </View>
       <View>
         <FieldLabel>Produtos da festa</FieldLabel>
@@ -173,7 +173,7 @@ export function PartyEventForm({ token, customers, themes, products, ready, onCr
                 <Text className="text-sm font-semibold text-navy">Brinde</Text>
               </Pressable>
               {line.isGift ? <Text className="text-sm text-muted">{formatCurrency(0)}</Text> : (
-                <Input accessibilityLabel={`Valor de ${line.product.name}`} keyboardType="decimal-pad" onChangeText={(price) => updateLine(line.id, { price })} placeholder="Valor do produto" value={line.price} />
+                <Input accessibilityLabel={`Valor de ${line.product.name}`} className="flex-none" keyboardType="decimal-pad" onChangeText={(price) => updateLine(line.id, { price })} placeholder="Valor do produto" value={line.price} />
               )}
             </View>
           ))}
@@ -206,11 +206,11 @@ export function PartyEventForm({ token, customers, themes, products, ready, onCr
       </View>
       <View>
         <FieldLabel>Sinal recebido (opcional)</FieldLabel>
-        <Input accessibilityLabel="Sinal recebido" keyboardType="decimal-pad" onChangeText={setDepositAmount} placeholder="0,00" value={depositAmount} />
+        <Input accessibilityLabel="Sinal recebido" className="flex-none" keyboardType="decimal-pad" onChangeText={setDepositAmount} placeholder="0,00" value={depositAmount} />
       </View>
       <View>
         <FieldLabel>Total já recebido (opcional)</FieldLabel>
-        <Input accessibilityLabel="Total já recebido" keyboardType="decimal-pad" onChangeText={setReceivedAmount} placeholder={deposit ? (deposit / 100).toFixed(2).replace('.', ',') : '0,00'} value={receivedAmount} />
+        <Input accessibilityLabel="Total já recebido" className="flex-none" keyboardType="decimal-pad" onChangeText={setReceivedAmount} placeholder={deposit ? (deposit / 100).toFixed(2).replace('.', ',') : '0,00'} value={receivedAmount} />
         <Text className="mt-1 text-xs text-muted">Inclua o sinal no total já recebido.</Text>
         {validTotal ? (
           <Pressable accessibilityRole="button" className="mt-1 self-start py-2" onPress={() => setReceivedAmount((total / 100).toFixed(2).replace('.', ','))}>
@@ -220,10 +220,10 @@ export function PartyEventForm({ token, customers, themes, products, ready, onCr
       </View>
       <View>
         <FieldLabel>Observações (opcional)</FieldLabel>
-        <Input accessibilityLabel="Observações da festa" className="min-h-[84px] py-3" maxLength={500} multiline onChangeText={setNotes} textAlignVertical="top" value={notes} />
+        <Input accessibilityLabel="Observações da festa" className="min-h-[84px] flex-none py-3" maxLength={500} multiline onChangeText={setNotes} textAlignVertical="top" value={notes} />
       </View>
       {error ? <Text accessibilityRole="alert" className="text-sm text-destructive">{error}</Text> : null}
-      <Button disabled={!ready || saving} onPress={handleSave}>
+      <Button accessibilityRole="button" disabled={!ready || saving} onPress={handleSave}>
         <ButtonText>{saving ? 'Salvando...' : past ? 'Registrar festa realizada' : 'Agendar festa'}</ButtonText>
       </Button>
     </Card>
