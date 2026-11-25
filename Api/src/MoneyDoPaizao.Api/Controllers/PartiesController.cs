@@ -43,6 +43,27 @@ public sealed class PartiesController(IPartyService partyService) : ControllerBa
         }
     }
 
+    [HttpGet("products")]
+    public async Task<IActionResult> GetProducts(CancellationToken cancellationToken)
+    {
+        if (!User.HasModule("Parties")) return Forbid();
+        return Ok(await partyService.GetProductsAsync(AccountId, cancellationToken));
+    }
+
+    [HttpPost("products")]
+    public async Task<IActionResult> CreateProduct(PartyProductCreateRequest request, CancellationToken cancellationToken)
+    {
+        if (!User.HasModule("Parties")) return Forbid();
+        try
+        {
+            return Created("api/parties/products", await partyService.CreateProductAsync(AccountId, request, cancellationToken));
+        }
+        catch (BusinessValidationException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
+
     [HttpGet("events")]
     public async Task<IActionResult> GetEvents(CancellationToken cancellationToken)
     {
@@ -57,6 +78,21 @@ public sealed class PartiesController(IPartyService partyService) : ControllerBa
         try
         {
             return Created("api/parties/events", await partyService.CreateEventAsync(AccountId, request, cancellationToken));
+        }
+        catch (BusinessValidationException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
+
+    [HttpPatch("events/{eventId:guid}/received-amount")]
+    public async Task<IActionResult> UpdateReceivedAmount(Guid eventId, PartyEventReceivedAmountRequest request, CancellationToken cancellationToken)
+    {
+        if (!User.HasModule("Parties")) return Forbid();
+        try
+        {
+            var partyEvent = await partyService.UpdateReceivedAmountAsync(AccountId, eventId, request, cancellationToken);
+            return partyEvent is null ? NotFound() : Ok(partyEvent);
         }
         catch (BusinessValidationException exception)
         {

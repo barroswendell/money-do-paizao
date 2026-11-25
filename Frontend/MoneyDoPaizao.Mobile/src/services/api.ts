@@ -76,6 +76,23 @@ export type PartyTheme = {
   createdAtUtc: string;
 };
 
+export type PartyProduct = {
+  id: string;
+  name: string;
+  notes?: string | null;
+};
+
+export type PartyEventProductInput = {
+  productId: string;
+  amount: number;
+  isGift: boolean;
+};
+
+export type PartyEventProduct = PartyEventProductInput & {
+  id: string;
+  productName: string;
+};
+
 export type PartyEvent = {
   id: string;
   customerId: string;
@@ -84,11 +101,22 @@ export type PartyEvent = {
   themeName?: string | null;
   eventDate: string;
   totalAmount: number;
+  baseAmount: number;
   depositReceived: boolean;
   depositAmount: number;
+  receivedAmount: number;
   remainingAmount: number;
   notes?: string | null;
   status: string;
+  products: PartyEventProduct[];
+};
+
+export type PartyMonth = {
+  month: string;
+  eventCount: number;
+  totalAmount: number;
+  receivedAmount: number;
+  remainingAmount: number;
 };
 
 export type PartyDashboard = {
@@ -96,6 +124,8 @@ export type PartyDashboard = {
   monthlyRevenue: number;
   monthlyDeposits: number;
   monthlyPending: number;
+  currentMonth: string;
+  months: PartyMonth[];
 };
 
 export type FinanceEntryType = 'Income' | 'Expense';
@@ -356,6 +386,18 @@ export function createPartyTheme(token: string, payload: { name: string; descrip
   });
 }
 
+export function getPartyProducts(token: string) {
+  return request<PartyProduct[]>('/parties/products', { method: 'GET', headers: authHeaders(token) });
+}
+
+export function createPartyProduct(token: string, payload: { name: string; notes?: string }) {
+  return request<PartyProduct>('/parties/products', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+}
+
 export function getPartyEvents(token: string) {
   return request<PartyEvent[]>('/parties/events', { method: 'GET', headers: authHeaders(token) });
 }
@@ -367,12 +409,22 @@ export function createPartyEvent(token: string, payload: {
   totalAmount: number;
   depositReceived: boolean;
   depositAmount: number;
+  receivedAmount?: number;
   notes?: string;
+  products?: PartyEventProductInput[];
 }) {
   return request<PartyEvent>('/parties/events', {
     method: 'POST',
     headers: authHeaders(token),
     body: JSON.stringify(payload),
+  });
+}
+
+export function updatePartyReceivedAmount(token: string, eventId: string, receivedAmount: number) {
+  return request<PartyEvent>(`/parties/events/${eventId}/received-amount`, {
+    method: 'PATCH',
+    headers: authHeaders(token),
+    body: JSON.stringify({ receivedAmount }),
   });
 }
 

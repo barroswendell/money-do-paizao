@@ -14,6 +14,7 @@ public sealed class MoneyDoPaizaoDbContext(DbContextOptions<MoneyDoPaizaoDbConte
     public DbSet<LoanPayment> LoanPayments => Set<LoanPayment>();
     public DbSet<LoanPaymentReceipt> LoanPaymentReceipts => Set<LoanPaymentReceipt>();
     public DbSet<PartyTheme> PartyThemes => Set<PartyTheme>();
+    public DbSet<PartyProduct> PartyProducts => Set<PartyProduct>();
     public DbSet<PartyEvent> PartyEvents => Set<PartyEvent>();
     public DbSet<FinanceEntry> FinanceEntries => Set<FinanceEntry>();
     public DbSet<Product> Products => Set<Product>();
@@ -109,6 +110,13 @@ public sealed class MoneyDoPaizaoDbContext(DbContextOptions<MoneyDoPaizaoDbConte
         theme.Property(item => item.Name).HasMaxLength(160).IsRequired();
         theme.Property(item => item.Description).HasMaxLength(240);
 
+        var partyProduct = modelBuilder.Entity<PartyProduct>();
+        partyProduct.ToTable("party_products");
+        partyProduct.HasKey(item => item.Id);
+        partyProduct.HasIndex(item => new { item.AccountId, item.Name });
+        partyProduct.Property(item => item.Name).HasMaxLength(160).IsRequired();
+        partyProduct.Property(item => item.Notes).HasMaxLength(500);
+
         var partyEvent = modelBuilder.Entity<PartyEvent>();
         partyEvent.ToTable("party_events");
         partyEvent.HasKey(item => item.Id);
@@ -116,10 +124,19 @@ public sealed class MoneyDoPaizaoDbContext(DbContextOptions<MoneyDoPaizaoDbConte
         partyEvent.Property(item => item.EventDate).HasColumnType("timestamp without time zone").IsRequired();
         partyEvent.Property(item => item.TotalAmount).HasPrecision(18, 2).IsRequired();
         partyEvent.Property(item => item.DepositAmount).HasPrecision(18, 2).IsRequired();
+        partyEvent.Property(item => item.AdditionalReceivedAmount).HasPrecision(18, 2).HasDefaultValue(0m);
         partyEvent.Property(item => item.Notes).HasMaxLength(500);
         partyEvent.Property(item => item.Status).HasMaxLength(30).IsRequired();
         partyEvent.HasOne(item => item.Customer).WithMany().HasForeignKey(item => item.CustomerId).OnDelete(DeleteBehavior.Restrict);
         partyEvent.HasOne(item => item.Theme).WithMany().HasForeignKey(item => item.ThemeId).OnDelete(DeleteBehavior.SetNull);
+        partyEvent.HasMany(item => item.Products).WithOne().HasForeignKey(item => item.PartyEventId).OnDelete(DeleteBehavior.Cascade);
+
+        var partyEventProduct = modelBuilder.Entity<PartyEventProduct>();
+        partyEventProduct.ToTable("party_event_products");
+        partyEventProduct.HasKey(item => item.Id);
+        partyEventProduct.Property(item => item.ProductName).HasMaxLength(160).IsRequired();
+        partyEventProduct.Property(item => item.Amount).HasPrecision(18, 2).IsRequired();
+        partyEventProduct.HasOne<PartyProduct>().WithMany().HasForeignKey(item => item.ProductId).OnDelete(DeleteBehavior.Restrict);
 
         var financeEntry = modelBuilder.Entity<FinanceEntry>();
         financeEntry.ToTable("finance_entries");

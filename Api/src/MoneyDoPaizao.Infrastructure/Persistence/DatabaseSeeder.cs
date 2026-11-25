@@ -199,6 +199,27 @@ public static class DatabaseSeeder
                 created_at_utc timestamp without time zone NOT NULL DEFAULT (timezone('utc', now()))
             );
 
+            ALTER TABLE public.party_events ADD COLUMN IF NOT EXISTS additional_received_amount numeric(18,2) NOT NULL DEFAULT 0;
+
+            CREATE TABLE IF NOT EXISTS public.party_products (
+                id uuid PRIMARY KEY,
+                account_id uuid NOT NULL,
+                name varchar(160) NOT NULL,
+                notes varchar(500)
+            );
+            CREATE INDEX IF NOT EXISTS ix_party_products_account_id_name ON public.party_products (account_id, name);
+
+            CREATE TABLE IF NOT EXISTS public.party_event_products (
+                id uuid PRIMARY KEY,
+                party_event_id uuid NOT NULL REFERENCES public.party_events (id) ON DELETE CASCADE,
+                product_id uuid NOT NULL REFERENCES public.party_products (id),
+                product_name varchar(160) NOT NULL,
+                amount numeric(18,2) NOT NULL,
+                is_gift boolean NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS ix_party_event_products_party_event_id ON public.party_event_products (party_event_id);
+            CREATE INDEX IF NOT EXISTS ix_party_event_products_product_id ON public.party_event_products (product_id);
+
             CREATE TABLE IF NOT EXISTS public.finance_entries (
                 id uuid PRIMARY KEY,
                 account_id uuid NOT NULL,

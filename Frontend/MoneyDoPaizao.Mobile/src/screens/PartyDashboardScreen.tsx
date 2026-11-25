@@ -1,52 +1,167 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
-import { ArrowLeftRight, CalendarDays, CalendarPlus, LogOut, Menu, Palette, PartyPopper, ReceiptText, Settings, UsersRound, X } from 'lucide-react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { ArrowLeftRight, CalendarDays, CalendarPlus, ChevronRight, LogOut, Menu, Package, Palette, PartyPopper, Settings, UsersRound, X } from 'lucide-react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BrandMark } from '../components/brand/BrandMark';
+import { PartyMonthTotals } from '../components/PartyMonthTotals';
 import { Button, ButtonText } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { Text } from '../components/ui/text';
-import { RootStackParamList } from '../navigation/AppNavigator';
-import { getPartyDashboard, type PartyDashboard } from '../services/api';
+import { emptyPartyMonth, partyMonthLabel, partyToday, shiftPartyMonth } from '../lib/partyMonths';
+import type { RootStackParamList } from '../navigation/AppNavigator';
+import { getPartyDashboard, type PartyDashboard, type PartyMonth } from '../services/api';
 import { clearSession } from '../services/session';
-import { formatCurrency } from '../lib/format';
 import { useTheme } from '../theme/ThemeProvider';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PartyDashboard'>;
+
+function MonthCard({ month, current = false, onPress }: { month: PartyMonth; current?: boolean; onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={`Ver festas de ${partyMonthLabel(month.month)}`} onPress={onPress}>
+      <Card className="gap-3 p-4">
+        <View className="flex-row items-center justify-between gap-2">
+          <View className="flex-1">
+            <Text className="font-extrabold text-navy">{partyMonthLabel(month.month)}{current ? ' · Mês atual' : ''}</Text>
+            <Text className="mt-1 text-xs text-muted">{month.eventCount === 1 ? '1 festa' : `${month.eventCount} festas`}</Text>
+          </View>
+          <ChevronRight color="#6D7784" size={19} />
+        </View>
+        <PartyMonthTotals month={month} />
+      </Card>
+    </Pressable>
+  );
+}
 
 export function PartyDashboardScreen({ navigation, route }: Props) {
   const { token, userName, role, modules } = route.params;
   const [summary, setSummary] = useState<PartyDashboard | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [refresh, setRefresh] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const { colors, resetTheme } = useTheme();
 
-  useEffect(() => {
-    getPartyDashboard(token).then(setSummary).catch(() => undefined).finally(() => setLoading(false));
-  }, [token]);
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    setLoading(true);
+    setError('');
+    getPartyDashboard(token)
+      .then((data) => { if (active) setSummary(data); })
+      .catch((exception) => { if (active) setError(exception.message); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [token, refresh]));
+
+  const currentMonth = summary?.currentMonth ?? partyToday().slice(0, 7);
+  const months = new Map((summary?.months ?? []).map((month) => [month.month, month]));
+  const current = months.get(currentMonth) ?? {
+    ...emptyPartyMonth(currentMonth),
+    totalAmount: summary?.monthlyRevenue ?? 0,
+    receivedAmount: summary?.monthlyDeposits ?? 0,
+    remainingAmount: summary?.monthlyPending ?? 0,
+  };
+  const past = [...months.values()].filter((month) => month.month < currentMonth).reverse();
+  const futureKeys = new Set([1, 2, 3].map((offset) => shiftPartyMonth(currentMonth, offset)));
+  for (const month of months.keys()) {
+    if (month > currentMonth) futureKeys.add(month);
+  }
+  const future = [...futureKeys].sort().map((month) => months.get(month) ?? emptyPartyMonth(month));
+  const openMonth = (month: string) => navigation.navigate('PartyEvents', { token, month });
+
+  const menuItems = [
+    { label: 'Agenda de festas', icon: CalendarDays, action: () => openMonth(currentMonth) },
+    { label: 'Cadastrar produto', icon: Package, action: () => navigation.navigate('PartyProducts', { token }) },
+    { label: 'Temas', icon: Palette, action: () => navigation.navigate('PartyThemes', { token }) },
+    { label: 'Clientes', icon: UsersRound, action: () => navigation.navigate('Customers', { token }) },
+    { label: 'Configurações', icon: Settings, action: () => navigation.navigate('Settings', { token }) },
+  ];
 
   return (
     <View className="flex-1 bg-background">
       <View className="flex-row items-center justify-between border-b border-border bg-surface px-5 pb-4 pt-5">
-        <View className="flex-row items-center"><BrandMark /><View className="ml-3"><Text className="text-[17px] font-extrabold text-navy">Se Organiza</Text><Text className="text-[11px] font-medium text-muted">Organização de festas</Text></View></View>
-        <Pressable accessibilityLabel="Abrir menu" className="h-10 w-10 items-center justify-center rounded-xl bg-navy" onPress={() => setMenuOpen(true)}><Menu color={colors.secondary} size={20} /></Pressable>
-      </View>
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }}>
-        <View className="mx-auto w-full max-w-2xl">
-          <Text className="mb-1 text-[13px] font-bold uppercase tracking-widest text-gold">PAINEL DE FESTAS</Text>
-          <Text className="text-2xl font-extrabold text-navy">Olá, {userName}.</Text>
-          <Text className="mt-1 text-[14px] text-muted">Sua agenda e seus recebimentos em ordem.</Text>
-          {loading ? <ActivityIndicator className="mt-4" color="#D4A64A" /> : null}
-          <Card className="my-5 border-0 bg-navy p-5"><Text className="mb-2 text-[11px] font-extrabold tracking-widest text-gold">SE ORGANIZA · FESTAS</Text><Text className="text-xl font-extrabold text-white">Cada detalhe no seu lugar.</Text><Text className="mt-2 text-[13px] leading-5 text-white/70">Cadastre clientes, temas e acompanhe o que já recebeu.</Text></Card>
-          <View className="mb-3 flex-row gap-3">
-            <Card className="flex-1 p-4"><CalendarDays color="#D4A64A" size={19} /><Text className="mt-3 text-[12px] text-muted">Próximas festas</Text><Text className="mt-1 text-2xl font-extrabold text-navy">{summary?.upcomingEvents ?? 0}</Text></Card>
-            <Card className="flex-1 p-4"><ReceiptText color="#D4A64A" size={19} /><Text className="mt-3 text-[12px] text-muted">Faturamento do mês</Text><Text className="mt-1 text-lg font-extrabold text-navy">{formatCurrency(summary?.monthlyRevenue ?? 0)}</Text></Card>
+        <View className="flex-row items-center">
+          <BrandMark />
+          <View className="ml-3">
+            <Text className="text-[17px] font-extrabold text-navy">Se Organiza</Text>
+            <Text className="text-[11px] font-medium text-muted">Organização de festas</Text>
           </View>
-          <View className="mb-5 flex-row gap-3"><Card className="flex-1 p-4"><Text className="text-[12px] text-muted">Sinais recebidos</Text><Text className="mt-2 text-lg font-extrabold text-[#1A7F5A]">{formatCurrency(summary?.monthlyDeposits ?? 0)}</Text></Card><Card className="flex-1 p-4"><Text className="text-[12px] text-muted">Falta receber</Text><Text className="mt-2 text-lg font-extrabold text-navy">{formatCurrency(summary?.monthlyPending ?? 0)}</Text></Card></View>
-          <Card className="p-5"><View className="mb-4 flex-row items-center"><PartyPopper color="#D4A64A" size={21} /><View className="ml-2"><Text className="text-[16px] font-extrabold text-navy">Ações rápidas</Text><Text className="text-[12px] text-muted">Organize os próximos passos.</Text></View></View><View className="gap-3"><Button className="flex-row gap-2" onPress={() => navigation.navigate('PartyEvents', { token })}><CalendarPlus color="#071629" size={18} /><ButtonText>Agendar festa</ButtonText></Button><Button className="flex-row gap-2" onPress={() => navigation.navigate('Customers', { token })} variant="outline"><UsersRound color="#071629" size={18} /><ButtonText variant="outline">Cadastrar cliente</ButtonText></Button><Button className="flex-row gap-2" onPress={() => navigation.navigate('PartyThemes', { token })} variant="outline"><Palette color="#071629" size={18} /><ButtonText variant="outline">Cadastrar tema</ButtonText></Button></View></Card>
+        </View>
+        <Pressable accessibilityRole="button" accessibilityLabel="Abrir menu" className="h-10 w-10 items-center justify-center rounded-xl bg-navy" onPress={() => setMenuOpen(true)}>
+          <Menu color={colors.secondary} size={20} />
+        </Pressable>
+      </View>
+      <ScrollView contentContainerStyle={{ padding: 20 }}>
+        <View className="mx-auto w-full max-w-2xl gap-5">
+          <View>
+            <Text className="text-sm font-bold text-gold">Painel de festas</Text>
+            <Text className="mt-1 text-2xl font-extrabold text-navy">Olá, {userName}.</Text>
+          </View>
+          <View className="flex-row flex-wrap gap-2">
+            <Button className="min-w-[130px] flex-1 flex-row gap-2" onPress={() => navigation.navigate('PartyEvents', { token, month: currentMonth, create: true })}>
+              <CalendarPlus color="#071629" size={18} /><ButtonText>Nova festa</ButtonText>
+            </Button>
+            <Button className="min-w-[130px] flex-1 flex-row gap-2" variant="outline" onPress={() => openMonth(currentMonth)}>
+              <CalendarDays color="#071629" size={18} /><ButtonText variant="outline">Ver agenda</ButtonText>
+            </Button>
+          </View>
+          {loading && !summary ? <ActivityIndicator color="#D4A64A" /> : null}
+          {error ? (
+            <Pressable accessibilityRole="button" onPress={() => setRefresh((value) => value + 1)}>
+              <Text className="text-sm text-destructive">{error} Toque para tentar de novo.</Text>
+            </Pressable>
+          ) : null}
+          {summary ? (
+            <>
+              <Card className="flex-row items-center justify-between gap-3 p-4">
+                <CalendarDays color={colors.secondary} size={19} />
+                <Text className="flex-1 font-bold text-navy">Próximas festas</Text>
+                <Text className="text-xl font-extrabold text-navy">{summary.upcomingEvents}</Text>
+              </Card>
+              <MonthCard current month={current} onPress={() => openMonth(currentMonth)} />
+              <View className="gap-2">
+                <Text className="text-base font-extrabold text-navy">Previsão dos próximos meses</Text>
+                {future.map((month) => <MonthCard key={month.month} month={month} onPress={() => openMonth(month.month)} />)}
+              </View>
+              <View className="gap-2">
+                <Text className="text-base font-extrabold text-navy">Faturamento dos meses anteriores</Text>
+                {past.length === 0 ? <Text className="text-sm text-muted">Nenhuma festa registrada em meses anteriores.</Text> : null}
+                {past.map((month) => <MonthCard key={month.month} month={month} onPress={() => openMonth(month.month)} />)}
+              </View>
+            </>
+          ) : null}
         </View>
       </ScrollView>
-      {menuOpen ? <View className="absolute inset-0 z-20 flex-row"><Pressable className="flex-1 bg-black/40" onPress={() => setMenuOpen(false)} /><View className="w-[300px] flex-1 bg-navy px-6 pb-8 pt-12"><View className="flex-row items-center justify-between"><View className="flex-row items-center"><BrandMark dark /><View className="ml-3"><Text className="text-[17px] font-extrabold text-white">Se Organiza</Text><Text className="text-[11px] text-white/60">Organização de festas</Text></View></View><Pressable onPress={() => setMenuOpen(false)}><X color="#FFF" size={22} /></Pressable></View><View className="mt-10 gap-2"><Pressable className="flex-row items-center rounded-xl bg-white/10 px-3 py-3" onPress={() => setMenuOpen(false)}><PartyPopper color={colors.secondary} size={19} /><Text className="ml-3 text-[14px] font-semibold text-gold">Visão geral</Text></Pressable><Pressable className="flex-row items-center rounded-xl px-3 py-3" onPress={() => { setMenuOpen(false); navigation.navigate('PartyEvents', { token }); }}><CalendarDays color="#FFF" size={19} /><Text className="ml-3 text-[14px] font-semibold text-white/80">Agenda de festas</Text></Pressable><Pressable className="flex-row items-center rounded-xl px-3 py-3" onPress={() => { setMenuOpen(false); navigation.navigate('PartyThemes', { token }); }}><Palette color="#FFF" size={19} /><Text className="ml-3 text-[14px] font-semibold text-white/80">Temas</Text></Pressable><Pressable className="flex-row items-center rounded-xl px-3 py-3" onPress={() => { setMenuOpen(false); navigation.navigate('Customers', { token }); }}><UsersRound color="#FFF" size={19} /><Text className="ml-3 text-[14px] font-semibold text-white/80">Clientes</Text></Pressable><Pressable className="flex-row items-center rounded-xl px-3 py-3" onPress={() => { setMenuOpen(false); navigation.navigate('Settings', { token }); }}><Settings color="#FFF" size={19} /><Text className="ml-3 text-[14px] font-semibold text-white/80">Configurações</Text></Pressable></View><Pressable className="mt-5 flex-row items-center rounded-xl border border-gold/40 px-3 py-3" onPress={() => { setMenuOpen(false); navigation.replace('ModuleSelection', { userName, role, token, modules }); }}><ArrowLeftRight color="#D4A64A" size={19} /><Text className="ml-3 text-[14px] font-semibold text-gold">Trocar de módulo</Text></Pressable><View className="mt-auto border-t border-white/10 pt-5"><Pressable className="flex-row items-center px-3 py-3" onPress={() => { void clearSession(); resetTheme(); navigation.replace('Login'); }}><LogOut color="#FFF" size={19} /><Text className="ml-3 text-[14px] font-semibold text-white/80">Sair</Text></Pressable></View></View></View> : null}
+      {menuOpen ? (
+        <View className="absolute inset-0 z-20 flex-row">
+          <Pressable accessibilityRole="button" accessibilityLabel="Fechar menu" className="flex-1 bg-black/40" onPress={() => setMenuOpen(false)} />
+          <ScrollView className="grow-0 bg-navy" style={{ width: '84%', maxWidth: 320 }} contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 36, paddingBottom: 24 }}>
+            <View className="flex-row items-center justify-between gap-2">
+              <View className="flex-1 flex-row items-center">
+                <BrandMark dark />
+                <Text className="ml-3 flex-1 text-[17px] font-extrabold text-white">Se Organiza</Text>
+              </View>
+              <Pressable accessibilityRole="button" accessibilityLabel="Fechar menu lateral" className="p-2" onPress={() => setMenuOpen(false)}><X color="#FFF" size={22} /></Pressable>
+            </View>
+            <View className="mt-7 gap-1">
+              <Pressable accessibilityRole="button" className="flex-row items-center rounded-xl bg-white/10 px-3 py-3" onPress={() => setMenuOpen(false)}>
+                <PartyPopper color={colors.secondary} size={19} /><Text className="ml-3 text-sm font-semibold text-gold">Visão geral</Text>
+              </Pressable>
+              {menuItems.map(({ label, icon: Icon, action }) => (
+                <Pressable accessibilityRole="button" className="flex-row items-center rounded-xl px-3 py-3" key={label} onPress={() => { setMenuOpen(false); action(); }}>
+                  <Icon color="#FFF" size={19} /><Text className="ml-3 text-sm font-semibold text-white/80">{label}</Text>
+                </Pressable>
+              ))}
+              <Pressable accessibilityRole="button" className="my-3 flex-row items-center rounded-xl border border-gold/40 px-3 py-3" onPress={() => { setMenuOpen(false); navigation.replace('ModuleSelection', { userName, role, token, modules }); }}>
+                <ArrowLeftRight color={colors.secondary} size={19} /><Text className="ml-3 text-sm font-semibold text-gold">Trocar de módulo</Text>
+              </Pressable>
+            </View>
+            <Pressable accessibilityRole="button" className="mt-auto flex-row items-center border-t border-white/10 px-3 py-3" onPress={() => { void clearSession(); resetTheme(); navigation.replace('Login'); }}>
+              <LogOut color="#FFF" size={19} /><Text className="ml-3 text-sm font-semibold text-white/80">Sair</Text>
+            </Pressable>
+          </ScrollView>
+        </View>
+      ) : null}
     </View>
   );
 }

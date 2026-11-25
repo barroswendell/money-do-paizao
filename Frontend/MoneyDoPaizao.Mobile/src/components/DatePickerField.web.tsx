@@ -5,6 +5,7 @@ type Props = {
   value: string;
   onChange: (value: string) => void;
   label?: string;
+  allowFuture?: boolean;
 };
 
 export function DatePickerField({ value, onChange, label = 'Data' }: Props) {

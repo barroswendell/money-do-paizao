@@ -8,8 +8,8 @@ import { Button, ButtonText } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Text } from '../components/ui/text';
-import { formatCurrency, formatDate } from '../lib/format';
-import { calculateInstallments, parseInstallmentCount, parseMoneyCents } from '../lib/saleAmounts';
+import { formatCurrency, formatDate, parseMoneyCents } from '../lib/format';
+import { calculateInstallments, parseInstallmentCount } from '../lib/saleAmounts';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { createSale, getCustomers, getProducts, getSales, type Customer, type Product, type Sale } from '../services/api';
 

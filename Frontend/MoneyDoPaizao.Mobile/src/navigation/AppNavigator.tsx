@@ -7,6 +7,7 @@ import { LoansScreen } from '../screens/LoansScreen';
 import { RegisterScreen } from '../screens/RegisterScreen';
 import { PartyDashboardScreen } from '../screens/PartyDashboardScreen';
 import { PartyEventsScreen } from '../screens/PartyEventsScreen';
+import { PartyProductsScreen } from '../screens/PartyProductsScreen';
 import { PartyThemesScreen } from '../screens/PartyThemesScreen';
 import { ModuleSelectionScreen } from '../screens/ModuleSelectionScreen';
 import { SalesDashboardScreen } from '../screens/SalesDashboardScreen';
@@ -36,7 +37,8 @@ export type RootStackParamList = {
   Loans: { token: string; openCreate?: boolean };
   Finance: { userName: string; role: 'Admin' | 'Usuario'; token: string; modules: ProductModule[] };
   PartyDashboard: { userName: string; role: 'Admin' | 'Usuario'; token: string; modules: ProductModule[] };
-  PartyEvents: { token: string };
+  PartyEvents: { token: string; month?: string; create?: boolean };
+  PartyProducts: { token: string };
   PartyThemes: { token: string };
   SalesDashboard: { userName: string; role: 'Admin' | 'Usuario'; token: string; modules: ProductModule[] };
   Products: { token: string };
@@ -62,6 +64,7 @@ export function AppNavigator({ session }: { session: AuthResponse | null }) {
       <Stack.Screen name="Finance" component={FinanceScreen} />
       <Stack.Screen name="PartyDashboard" component={PartyDashboardScreen} />
       <Stack.Screen name="PartyEvents" component={PartyEventsScreen} />
+      <Stack.Screen name="PartyProducts" component={PartyProductsScreen} />
       <Stack.Screen name="PartyThemes" component={PartyThemesScreen} />
       <Stack.Screen name="SalesDashboard" component={SalesDashboardScreen} />
       <Stack.Screen name="Products" component={ProductsScreen} />

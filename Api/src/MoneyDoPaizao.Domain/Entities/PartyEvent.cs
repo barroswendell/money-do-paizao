@@ -14,16 +14,20 @@ public sealed class PartyEvent
         decimal totalAmount,
         bool depositReceived,
         decimal depositAmount,
-        string? notes)
+        string? notes,
+        IReadOnlyList<PartyEventProduct> products,
+        decimal receivedAmount)
     {
         Id = Guid.NewGuid();
         AccountId = accountId;
         CustomerId = customerId;
         ThemeId = themeId;
-        EventDate = eventDate.Date;
+        EventDate = DateTime.SpecifyKind(eventDate.Date, DateTimeKind.Unspecified);
         TotalAmount = totalAmount;
         DepositReceived = depositReceived;
         DepositAmount = depositReceived ? depositAmount : 0;
+        Products.AddRange(products);
+        SetReceivedAmount(receivedAmount);
         Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
         Status = "Scheduled";
         CreatedAtUtc = DateTime.UtcNow;
@@ -39,6 +43,10 @@ public sealed class PartyEvent
     public decimal TotalAmount { get; private set; }
     public bool DepositReceived { get; private set; }
     public decimal DepositAmount { get; private set; }
+    public decimal AdditionalReceivedAmount { get; private set; }
+    public decimal ReceivedAmount => DepositAmount + AdditionalReceivedAmount;
+    public decimal RemainingAmount => TotalAmount - ReceivedAmount;
+    public List<PartyEventProduct> Products { get; } = [];
     public string? Notes { get; private set; }
     public string Status { get; private set; } = "Scheduled";
     public DateTime CreatedAtUtc { get; private set; }
@@ -51,5 +59,9 @@ public sealed class PartyEvent
         decimal totalAmount,
         bool depositReceived,
         decimal depositAmount,
-        string? notes) => new(accountId, customerId, themeId, eventDate, totalAmount, depositReceived, depositAmount, notes);
+        string? notes,
+        IReadOnlyList<PartyEventProduct> products,
+        decimal receivedAmount) => new(accountId, customerId, themeId, eventDate, totalAmount, depositReceived, depositAmount, notes, products, receivedAmount);
+
+    public void SetReceivedAmount(decimal amount) => AdditionalReceivedAmount = amount - DepositAmount;
 }

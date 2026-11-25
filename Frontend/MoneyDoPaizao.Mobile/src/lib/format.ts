@@ -5,6 +5,17 @@ export function formatCurrency(value: number) {
   }).format(value);
 }
 
+export function parseMoneyCents(input: string): number | null {
+  const value = input.trim();
+  const isGrouped = /^\d{1,3}(\.\d{3})+(,\d{0,2})?$/.test(value);
+  const normalized = isGrouped ? value.replace(/\./g, '') : value;
+  const match = /^(\d+)(?:[.,](\d{0,2}))?$/.exec(normalized);
+  if (!match) return null;
+
+  const cents = Number(match[1]) * 100 + Number((match[2] ?? '').padEnd(2, '0'));
+  return Number.isSafeInteger(cents) && Math.round(cents / 100 * 100) === cents ? cents : null;
+}
+
 export function formatDate(value: string) {
   return new Intl.DateTimeFormat('pt-BR', {
     day: '2-digit',

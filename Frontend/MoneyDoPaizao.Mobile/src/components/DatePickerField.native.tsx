@@ -8,6 +8,7 @@ type Props = {
   value: string;
   onChange: (value: string) => void;
   label?: string;
+  allowFuture?: boolean;
 };
 
 function parseDate(value: string) {
@@ -35,7 +36,7 @@ function toISODate(value: Date) {
   return `${year}-${month}-${day}`;
 }
 
-export function DatePickerField({ value, onChange, label = 'a data' }: Props) {
+export function DatePickerField({ value, onChange, label = 'a data', allowFuture = false }: Props) {
   const [open, setOpen] = useState(false);
 
   function handleChange(event: DateTimePickerEvent, selectedDate?: Date) {
@@ -63,7 +64,7 @@ export function DatePickerField({ value, onChange, label = 'a data' }: Props) {
           value={parseDate(value)}
           mode="date"
           display={Platform.OS === 'android' ? 'calendar' : 'default'}
-          maximumDate={new Date()}
+          maximumDate={allowFuture ? undefined : new Date()}
           onChange={handleChange}
         />
       ) : null}
